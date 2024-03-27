@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::error::MiniKVDBError;
 use serde::{Deserialize, Serialize};
 
@@ -11,6 +13,19 @@ pub enum KVDBValue {
     String(String),
     #[cfg(feature = "chrono")]
     DateTimeUtc(::chrono::DateTime<::chrono::Utc>),
+}
+
+impl Display for KVDBValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            KVDBValue::Int(v) => write!(f, "{v}"),
+            KVDBValue::Float(v) => write!(f, "{v}"),
+            KVDBValue::Bool(v) => write!(f, "{v}"),
+            KVDBValue::String(v) => write!(f, "\"{v}\""),
+            #[cfg(feature = "chrono")]
+            KVDBValue::DateTimeUtc(v) => write!(f, "{v}"),
+        }
+    }
 }
 
 impl From<i32> for KVDBValue {
