@@ -69,7 +69,7 @@ impl ListStore {
         }
     }
 
-    pub fn len<'a>(store: &Self, cmd: impl Into<ListLenCommmand<'a>>) -> Result<usize> {
+    pub fn list_len<'a>(store: &Self, cmd: impl Into<ListLenCommmand<'a>>) -> Result<usize> {
         let ListLenCommmand(k) = cmd.into();
         Ok(store.0.get(k).map(|l| l.len()).unwrap_or(0))
     }
@@ -101,7 +101,7 @@ impl MiniKVDB {
     }
 
     pub fn list_len<'a>(&self, cmd: impl Into<ListLenCommmand<'a>>) -> Result<usize> {
-        ListStore::len(&*self.list.read()?, cmd)
+        ListStore::list_len(&*self.list.read()?, cmd)
     }
 }
 
