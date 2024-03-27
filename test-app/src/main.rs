@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use lib_minikvdb::prelude::*;
 use minikvdb_macros::KVDBEntity;
 
@@ -6,7 +7,10 @@ fn main() {
 
     let _ = db.set("name", "Tom");
 
-    let _ = db.push_front("things", values!("John", 3.141529, 69, 420.0, false));
+    let _ = db.push_front(
+        "things",
+        values!("John", 3.141529, 69, 420.0, false, Utc::now(), Utc::now()),
+    );
 
     let _ = db.hash_set("user:2", Person::default());
     let _ = db.hash_set(
@@ -16,8 +20,11 @@ fn main() {
             age: 44,
             money: 123.4,
             premium: false,
+            joined: Utc::now(),
         },
     );
+
+    let x = Utc::now();
 
     dbg!(db);
 }
@@ -28,4 +35,5 @@ pub struct Person {
     age: i32,
     money: f32,
     premium: bool,
+    joined: DateTime<Utc>,
 }

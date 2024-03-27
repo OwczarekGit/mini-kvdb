@@ -9,6 +9,8 @@ pub enum KVDBValue {
     Float(f32),
     Bool(bool),
     String(String),
+    #[cfg(feature = "chrono")]
+    DateTimeUtc(::chrono::DateTime<::chrono::Utc>),
 }
 
 impl From<i32> for KVDBValue {
@@ -125,6 +127,41 @@ impl TryFrom<&KVDBValue> for String {
             Ok(v.clone())
         } else {
             Err(MiniKVDBError::WrongFieldType)
+        }
+    }
+}
+
+#[cfg(feature = "chrono")]
+mod chrono {
+    use chrono::{DateTime, Utc};
+
+    use super::KVDBValue;
+    use crate::error::MiniKVDBError;
+
+    impl From<chrono::DateTime<chrono::Utc>> for KVDBValue {
+        fn from(value: chrono::DateTime<chrono::Utc>) -> Self {
+            Self::DateTimeUtc(value)
+        }
+    }
+    impl TryFrom<KVDBValue> for DateTime<Utc> {
+        type Error = MiniKVDBError;
+        fn try_from(value: KVDBValue) -> Result<Self, Self::Error> {
+            if let KVDBValue::DateTimeUtc(v) = value {
+                Ok(v)
+            } else {
+                Err(MiniKVDBError::WrongFieldType)
+            }
+        }
+    }
+
+    impl TryFrom<&KVDBValue> for DateTime<Utc> {
+        type Error = MiniKVDBError;
+        fn try_from(value: &KVDBValue) -> Result<Self, Self::Error> {
+            if let KVDBValue::DateTimeUtc(v) = value {
+                Ok(v.to_owned())
+            } else {
+                Err(MiniKVDBError::WrongFieldType)
+            }
         }
     }
 }
