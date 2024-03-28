@@ -24,8 +24,9 @@ fn main() {
         ),
     );
 
-    // dbg!(db.list_range(("things", 0)));
-    dbg!(db.list_remove(("things", 1, true)));
+    dbg!(db.list_contains("things", true));
+    dbg!(db.list_remove(("things", true)));
+    dbg!(db.list_contains("things", true));
 
     dbg!(&db);
 

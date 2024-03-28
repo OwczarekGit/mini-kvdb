@@ -106,3 +106,16 @@ where
         Self(value.0.into(), 0, value.1.into())
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct ListContainsValueCommand<'a>(pub &'a str, pub KVDBValue);
+
+impl<'a, K, V> From<(K, V)> for ListContainsValueCommand<'a>
+where
+    K: Into<&'a str>,
+    V: Into<KVDBValue>,
+{
+    fn from(value: (K, V)) -> Self {
+        Self(value.0.into(), value.1.into())
+    }
+}

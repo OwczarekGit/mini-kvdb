@@ -11,8 +11,8 @@ use crate::{
 };
 
 use self::list_command::{
-    ListLenCommmand, ListRangeCommand, ListRemoveCommand, PopBackCommand, PopFrontCommand,
-    PushBackCommand, PushFrontCommand,
+    ListContainsValueCommand, ListLenCommmand, ListRangeCommand, ListRemoveCommand, PopBackCommand,
+    PopFrontCommand, PushBackCommand, PushFrontCommand,
 };
 
 pub mod list_command;
@@ -71,10 +71,7 @@ impl ListStore {
         }
     }
 
-    pub fn list_range<'a>(
-        store: &Self,
-        cmd: impl Into<ListRangeCommand<'a>>,
-    ) -> Result<Vec<KVDBValue>> {
+    pub fn range<'a>(store: &Self, cmd: impl Into<ListRangeCommand<'a>>) -> Result<Vec<KVDBValue>> {
         let ListRangeCommand(k, start, count) = cmd.into();
         if let Some(list) = store.0.get(k) {
             if list.is_empty() {
@@ -93,15 +90,12 @@ impl ListStore {
         }
     }
 
-    pub fn list_len<'a>(store: &Self, cmd: impl Into<ListLenCommmand<'a>>) -> Result<usize> {
+    pub fn len<'a>(store: &Self, cmd: impl Into<ListLenCommmand<'a>>) -> Result<usize> {
         let ListLenCommmand(k) = cmd.into();
         Ok(store.0.get(k).map(|l| l.len()).unwrap_or(0))
     }
 
-    pub fn list_remove<'a>(
-        store: &mut Self,
-        cmd: impl Into<ListRemoveCommand<'a>>,
-    ) -> Result<usize> {
+    pub fn remove<'a>(store: &mut Self, cmd: impl Into<ListRemoveCommand<'a>>) -> Result<usize> {
         let ListRemoveCommand(k, mut c, v) = cmd.into();
         if let Some(list) = store.0.get_mut(k) {
             let mut dc = 0;
@@ -133,6 +127,18 @@ impl ListStore {
             Ok(0)
         }
     }
+
+    pub fn contains<'a>(
+        store: &Self,
+        cmd: impl Into<ListContainsValueCommand<'a>>,
+    ) -> Result<bool> {
+        let ListContainsValueCommand(k, v) = cmd.into();
+        if let Some(list) = store.0.get(k) {
+            Ok(list.iter().any(|i| *i == v))
+        } else {
+            Ok(false)
+        }
+    }
 }
 
 impl MiniKVDB {
@@ -161,15 +167,23 @@ impl MiniKVDB {
     }
 
     pub fn list_range<'a>(&self, cmd: impl Into<ListRangeCommand<'a>>) -> Result<Vec<KVDBValue>> {
-        ListStore::list_range(&*self.list.read()?, cmd)
+        ListStore::range(&*self.list.read()?, cmd)
     }
 
     pub fn list_len<'a>(&self, cmd: impl Into<ListLenCommmand<'a>>) -> Result<usize> {
-        ListStore::list_len(&*self.list.read()?, cmd)
+        ListStore::len(&*self.list.read()?, cmd)
     }
 
     pub fn list_remove<'a>(&self, cmd: impl Into<ListRemoveCommand<'a>>) -> Result<usize> {
-        ListStore::list_remove(&mut *self.list.write()?, cmd)
+        ListStore::remove(&mut *self.list.write()?, cmd)
+    }
+
+    pub fn list_contains<'a>(
+        &self,
+        key: impl Into<&'a str>,
+        value: impl Into<KVDBValue>,
+    ) -> Result<bool> {
+        ListStore::contains(&*self.list.read()?, (key.into(), value.into()))
     }
 }
 
