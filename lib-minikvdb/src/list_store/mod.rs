@@ -107,7 +107,7 @@ impl ListStore {
             let mut dc = 0;
             if c == 0 {
                 list.retain(|el| {
-                    if *el != v || dc > 0 {
+                    if *el != v {
                         true
                     } else {
                         dc += 1;
