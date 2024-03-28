@@ -25,7 +25,7 @@ fn main() {
     );
 
     // dbg!(db.list_range(("things", 0)));
-    // dbg!(db.list_remove(("things", 2, true)));
+    dbg!(db.list_remove(("things", 2, true)));
 
     dbg!(&db);
 

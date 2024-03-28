@@ -75,7 +75,7 @@ impl ListStore {
         store: &Self,
         cmd: impl Into<ListRangeCommand<'a>>,
     ) -> Result<Vec<KVDBValue>> {
-        let ListRangeCommand(k, start, mut count) = cmd.into();
+        let ListRangeCommand(k, start, count) = cmd.into();
         if let Some(list) = store.0.get(k) {
             if list.is_empty() {
                 return Ok(vec![]);
@@ -87,7 +87,7 @@ impl ListStore {
                 return Ok(list[start as usize..].to_vec());
             }
 
-            return Ok(list[start as usize..((start + count) as usize).min(list.len())].to_vec());
+            Ok(list[start as usize..((start + count) as usize).min(list.len())].to_vec())
         } else {
             Ok(vec![])
         }
