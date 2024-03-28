@@ -9,10 +9,25 @@ fn main() {
 
     let _ = db.push_front(
         "things",
-        values!("John", 3.141529, 69, 420.0, false, Utc::now(), Utc::now()),
+        values!(
+            "John",
+            3.141529,
+            69,
+            420.0,
+            false,
+            true,
+            false,
+            false,
+            true,
+            Utc::now(),
+            Utc::now()
+        ),
     );
 
     // dbg!(db.list_range(("things", 0)));
+    // dbg!(db.list_remove(("things", 2, true)));
+
+    dbg!(&db);
 
     let _ = db.hash_set("user:2", Person::default());
     let _ = db.hash_set(

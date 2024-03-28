@@ -82,3 +82,27 @@ where
         Self(value.into())
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct ListRemoveCommand<'a>(pub &'a str, pub i32, pub KVDBValue);
+
+impl<'a, K, C, T> From<(K, C, T)> for ListRemoveCommand<'a>
+where
+    K: Into<&'a str>,
+    C: Into<i32>,
+    T: Into<KVDBValue>,
+{
+    fn from(value: (K, C, T)) -> Self {
+        Self(value.0.into(), value.1.into(), value.2.into())
+    }
+}
+
+impl<'a, K, T> From<(K, T)> for ListRemoveCommand<'a>
+where
+    K: Into<&'a str>,
+    T: Into<KVDBValue>,
+{
+    fn from(value: (K, T)) -> Self {
+        Self(value.0.into(), 0, value.1.into())
+    }
+}

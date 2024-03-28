@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 pub type KVDBObject = std::collections::HashMap<String, KVDBValue>;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub enum KVDBValue {
     Int(i32),
     Float(f32),

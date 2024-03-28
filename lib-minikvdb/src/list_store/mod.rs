@@ -11,8 +11,8 @@ use crate::{
 };
 
 use self::list_command::{
-    ListLenCommmand, ListRangeCommand, PopBackCommand, PopFrontCommand, PushBackCommand,
-    PushFrontCommand,
+    ListLenCommmand, ListRangeCommand, ListRemoveCommand, PopBackCommand, PopFrontCommand,
+    PushBackCommand, PushFrontCommand,
 };
 
 pub mod list_command;
@@ -97,6 +97,42 @@ impl ListStore {
         let ListLenCommmand(k) = cmd.into();
         Ok(store.0.get(k).map(|l| l.len()).unwrap_or(0))
     }
+
+    pub fn list_remove<'a>(
+        store: &mut Self,
+        cmd: impl Into<ListRemoveCommand<'a>>,
+    ) -> Result<usize> {
+        let ListRemoveCommand(k, mut c, v) = cmd.into();
+        if let Some(list) = store.0.get_mut(k) {
+            let mut dc = 0;
+            if c == 0 {
+                list.retain(|el| {
+                    if *el != v || dc > 0 {
+                        true
+                    } else {
+                        dc += 1;
+                        false
+                    }
+                });
+
+                Ok(dc)
+            } else {
+                list.retain(|el| {
+                    if *el != v || c <= 0 {
+                        true
+                    } else {
+                        c -= 1;
+                        dc += 1;
+                        false
+                    }
+                });
+
+                Ok(dc)
+            }
+        } else {
+            Ok(0)
+        }
+    }
 }
 
 impl MiniKVDB {
@@ -130,6 +166,10 @@ impl MiniKVDB {
 
     pub fn list_len<'a>(&self, cmd: impl Into<ListLenCommmand<'a>>) -> Result<usize> {
         ListStore::list_len(&*self.list.read()?, cmd)
+    }
+
+    pub fn list_remove<'a>(&self, cmd: impl Into<ListRemoveCommand<'a>>) -> Result<usize> {
+        ListStore::list_remove(&mut *self.list.write()?, cmd)
     }
 }
 
