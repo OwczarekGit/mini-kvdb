@@ -12,6 +12,8 @@ fn main() {
         values!("John", 3.141529, 69, 420.0, false, Utc::now(), Utc::now()),
     );
 
+    // dbg!(db.list_range(("things", 0)));
+
     let _ = db.hash_set("user:2", Person::default());
     let _ = db.hash_set(
         "user:1",
@@ -26,7 +28,7 @@ fn main() {
 
     let x = Utc::now();
 
-    dbg!(db);
+    // dbg!(db);
 }
 
 #[derive(Debug, Default, Clone, KVDBEntity)]

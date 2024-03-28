@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, VecDeque},
     sync::{PoisonError, RwLockReadGuard, RwLockWriteGuard},
+    vec,
 };
 
 use crate::{
@@ -10,7 +11,8 @@ use crate::{
 };
 
 use self::list_command::{
-    ListLenCommmand, PopBackCommand, PopFrontCommand, PushBackCommand, PushFrontCommand,
+    ListLenCommmand, ListRangeCommand, PopBackCommand, PopFrontCommand, PushBackCommand,
+    PushFrontCommand,
 };
 
 pub mod list_command;
@@ -69,6 +71,28 @@ impl ListStore {
         }
     }
 
+    pub fn list_range<'a>(
+        store: &Self,
+        cmd: impl Into<ListRangeCommand<'a>>,
+    ) -> Result<Vec<KVDBValue>> {
+        let ListRangeCommand(k, start, mut count) = cmd.into();
+        if let Some(list) = store.0.get(k) {
+            if list.is_empty() {
+                return Ok(vec![]);
+            }
+
+            let list: Vec<KVDBValue> = list.clone().into();
+
+            if count < 0 {
+                return Ok(list[start as usize..].to_vec());
+            }
+
+            return Ok(list[start as usize..((start + count) as usize).min(list.len())].to_vec());
+        } else {
+            Ok(vec![])
+        }
+    }
+
     pub fn list_len<'a>(store: &Self, cmd: impl Into<ListLenCommmand<'a>>) -> Result<usize> {
         let ListLenCommmand(k) = cmd.into();
         Ok(store.0.get(k).map(|l| l.len()).unwrap_or(0))
@@ -98,6 +122,10 @@ impl MiniKVDB {
 
     pub fn pop_back<'a>(&self, cmd: impl Into<PopBackCommand<'a>>) -> Result<Option<KVDBValue>> {
         ListStore::pop_back(&mut *self.list.write()?, cmd)
+    }
+
+    pub fn list_range<'a>(&self, cmd: impl Into<ListRangeCommand<'a>>) -> Result<Vec<KVDBValue>> {
+        ListStore::list_range(&*self.list.read()?, cmd)
     }
 
     pub fn list_len<'a>(&self, cmd: impl Into<ListLenCommmand<'a>>) -> Result<usize> {
