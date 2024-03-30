@@ -7,9 +7,10 @@ use std::{
 use crate::{
     error::{MiniKVDBError, Result},
     minikvdb::{kvdb_value::KVDBValue, MiniKVDB},
+    prelude::KVDBObject,
 };
 
-use self::map_command::{DeleteCommand, GetAllCommand, GetCommand, SetCommand};
+use self::map_command::{DeleteCommand, GetAllCommand, GetCommand, GetObjectCommand, SetCommand};
 
 pub mod map_command;
 
@@ -39,6 +40,20 @@ impl MapStore {
         let GetAllCommand(k) = cmd.into();
         if let Some(v) = store.0.get(k) {
             Ok(Some(v.clone()))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn get_object<'a, T: TryFrom<KVDBObject>>(
+        store: &Self,
+        cmd: impl Into<GetObjectCommand<'a>>,
+    ) -> Result<Option<T>> {
+        let GetObjectCommand(k) = cmd.into();
+        if let Some(obj) = store.0.get(k).cloned() {
+            Ok(Some(
+                obj.try_into().map_err(|_| MiniKVDBError::InvalidObject)?,
+            ))
         } else {
             Ok(None)
         }
@@ -74,6 +89,13 @@ impl MiniKVDB {
         key: impl Into<&'a str>,
     ) -> Result<Option<HashMap<String, KVDBValue>>> {
         MapStore::get_all(&*self.map.read()?, key.into())
+    }
+
+    pub fn hash_get_object<'a, T: TryFrom<KVDBObject>>(
+        &self,
+        key: impl Into<&'a str>,
+    ) -> Result<Option<T>> {
+        MapStore::get_object(&*self.map.read()?, key.into())
     }
 
     pub fn hash_delete<'a>(

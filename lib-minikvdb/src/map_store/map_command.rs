@@ -38,3 +38,11 @@ impl<'a> From<&'a str> for DeleteCommand<'a> {
         Self(value)
     }
 }
+
+pub struct GetObjectCommand<'a>(pub &'a str);
+
+impl<'a> From<&'a str> for GetObjectCommand<'a> {
+    fn from(value: &'a str) -> Self {
+        Self(value)
+    }
+}

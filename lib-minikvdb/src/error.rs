@@ -6,5 +6,6 @@ pub enum MiniKVDBError {
     RWLockReadPoison,
     CannotIncrement,
     WrongFieldType,
+    InvalidObject,
     MissingField(String),
 }

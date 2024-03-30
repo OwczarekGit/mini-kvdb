@@ -28,7 +28,7 @@ fn main() {
     dbg!(db.list_remove(("things", true)));
     dbg!(db.list_contains("things", true));
 
-    dbg!(&db);
+    // dbg!(&db);
 
     let _ = db.hash_set("user:2", Person::default());
     let _ = db.hash_set(
@@ -42,6 +42,9 @@ fn main() {
         },
     );
 
+    dbg!(db.hash_get_object::<'_, Person>("user:1"));
+    //dbg!(db.hash_get_object::<'_, Credentials>("cred:1"));
+
     let x = Utc::now();
 
     // dbg!(db);
@@ -54,4 +57,10 @@ pub struct Person {
     money: f32,
     premium: bool,
     joined: DateTime<Utc>,
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct Credentials {
+    email: String,
+    password: String,
 }
