@@ -7,7 +7,7 @@ use std::{
 
 use crate::{
     error::{MiniKVDBError, Result},
-    minikvdb::{kvdb_value::KVDBValue, MiniKVDB},
+    minikvdb::{kvdb_value::KVDBValue, KVDBStore, MiniKVDB},
 };
 
 use self::list_command::{
@@ -19,6 +19,8 @@ pub mod list_command;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct ListStore(HashMap<String, VecDeque<KVDBValue>>);
+
+impl KVDBStore for ListStore {}
 
 impl ListStore {
     pub fn push_front<'a>(store: &mut Self, cmd: impl Into<PushFrontCommand<'a>>) -> Result<usize> {
@@ -184,17 +186,5 @@ impl MiniKVDB {
         value: impl Into<KVDBValue>,
     ) -> Result<bool> {
         ListStore::contains(&*self.list.read()?, (key.into(), value.into()))
-    }
-}
-
-impl From<PoisonError<RwLockWriteGuard<'_, ListStore>>> for MiniKVDBError {
-    fn from(_: PoisonError<RwLockWriteGuard<'_, ListStore>>) -> Self {
-        Self::RWLockWritePoison
-    }
-}
-
-impl From<PoisonError<RwLockReadGuard<'_, ListStore>>> for MiniKVDBError {
-    fn from(_: PoisonError<RwLockReadGuard<'_, ListStore>>) -> Self {
-        Self::RWLockReadPoison
     }
 }

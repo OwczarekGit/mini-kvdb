@@ -6,7 +6,7 @@ use std::{
 
 use crate::{
     error::{MiniKVDBError, Result},
-    minikvdb::{kvdb_value::KVDBValue, MiniKVDB},
+    minikvdb::{kvdb_value::KVDBValue, KVDBStore, MiniKVDB},
 };
 
 use self::kv_command::{GetCommand, IncrementCommand, SetCommand};
@@ -15,6 +15,8 @@ pub mod kv_command;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 pub struct KVStore(HashMap<String, KVDBValue>);
+
+impl KVDBStore for KVStore {}
 
 impl KVStore {
     pub fn set<'a>(store: &mut Self, cmd: impl Into<SetCommand<'a>>) -> Result<()> {
@@ -60,17 +62,5 @@ impl MiniKVDB {
 
     pub fn increment<'a>(&self, key: impl Into<&'a str>, value: impl Into<f32>) -> Result<f32> {
         KVStore::increment(&mut *self.kv.write()?, (key.into(), value.into()))
-    }
-}
-
-impl From<PoisonError<RwLockWriteGuard<'_, KVStore>>> for MiniKVDBError {
-    fn from(_: PoisonError<RwLockWriteGuard<'_, KVStore>>) -> Self {
-        Self::RWLockWritePoison
-    }
-}
-
-impl From<PoisonError<RwLockReadGuard<'_, KVStore>>> for MiniKVDBError {
-    fn from(_: PoisonError<RwLockReadGuard<'_, KVStore>>) -> Self {
-        Self::RWLockReadPoison
     }
 }

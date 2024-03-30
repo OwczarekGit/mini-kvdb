@@ -12,3 +12,5 @@ pub struct MiniKVDB {
     #[cfg(feature = "map")]
     pub(crate) map: Arc<RwLock<crate::map_store::MapStore>>,
 }
+
+pub trait KVDBStore {}

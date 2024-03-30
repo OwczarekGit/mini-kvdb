@@ -42,7 +42,7 @@ fn main() {
         },
     );
 
-    dbg!(db.hash_get_object::<'_, Person>("user:1"));
+    dbg!(db.hash_get_object::<Person>("user:1"));
     //dbg!(db.hash_get_object::<'_, Credentials>("cred:1"));
 
     let x = Utc::now();
