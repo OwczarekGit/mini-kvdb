@@ -1,12 +1,11 @@
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, VecDeque},
-    sync::{PoisonError, RwLockReadGuard, RwLockWriteGuard},
     vec,
 };
 
 use crate::{
-    error::{MiniKVDBError, Result},
+    error::Result,
     minikvdb::{kvdb_value::KVDBValue, KVDBStore, MiniKVDB},
 };
 

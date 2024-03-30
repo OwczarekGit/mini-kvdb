@@ -1,8 +1,5 @@
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::HashMap,
-    sync::{PoisonError, RwLockReadGuard, RwLockWriteGuard},
-};
+use std::collections::HashMap;
 
 use crate::{
     error::{MiniKVDBError, Result},
@@ -15,7 +12,7 @@ use self::map_command::{DeleteCommand, GetAllCommand, GetCommand, GetObjectComma
 pub mod map_command;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
-pub struct MapStore(HashMap<String, HashMap<String, KVDBValue>>);
+pub struct MapStore(HashMap<String, KVDBObject>);
 
 impl KVDBStore for MapStore {}
 
