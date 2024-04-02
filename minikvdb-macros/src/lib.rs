@@ -24,7 +24,7 @@ fn gen_into_hashmap(ast: &syn::DeriveInput) -> TokenStream {
     let fields = data.fields.iter().map(|f| {
         let name = &f.ident;
         quote! {
-            (stringify!(#name).to_string(), v.#name.into())
+            (stringify!(#name).to_string().into(), v.#name.into())
         }
     });
 

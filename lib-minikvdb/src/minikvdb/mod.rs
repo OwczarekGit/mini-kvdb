@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::{Arc, RwLock};
 
 pub mod kvdb_value;
+pub mod kvdb_key;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct MiniKVDB {

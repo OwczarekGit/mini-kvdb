@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use lib_minikvdb::prelude::*;
+use lib_minikvdb::{minikvdb::kvdb_key::Key, prelude::*};
 use minikvdb_macros::KVDBEntity;
 
 fn main() {
@@ -42,8 +42,16 @@ fn main() {
         },
     );
 
-    dbg!(db.hash_get_object::<Person>("user:1"));
-    //dbg!(db.hash_get_object::<'_, Credentials>("cred:1"));
+    dbg!(db.hash_get_object::<Person>("user:2"));
+
+    let _ = db.hash_set(
+        Key::namespaced("cred", 3.141529),
+        Credentials {
+            email: "user@addr.com".to_owned(),
+            password: "passw0rd".to_owned(),
+        },
+    );
+    dbg!(db.hash_get_object::<Credentials>("cred:3.141529"));
 
     let _x = Utc::now();
 
@@ -59,7 +67,7 @@ pub struct Person {
     joined: DateTime<Utc>,
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, KVDBEntity)]
 pub struct Credentials {
     email: String,
     password: String,

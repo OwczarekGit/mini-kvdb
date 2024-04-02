@@ -3,7 +3,9 @@ use std::fmt::Display;
 use crate::error::MiniKVDBError;
 use serde::{Deserialize, Serialize};
 
-pub type KVDBObject = std::collections::HashMap<String, KVDBValue>;
+use super::kvdb_key::Key;
+
+pub type KVDBObject = std::collections::HashMap<Key, KVDBValue>;
 
 #[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize)]
 pub enum KVDBValue {
