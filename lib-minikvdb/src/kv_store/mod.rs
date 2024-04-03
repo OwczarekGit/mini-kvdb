@@ -6,7 +6,7 @@ use crate::{
     minikvdb::{kvdb_key::Key, kvdb_value::KVDBValue, KVDBStore, MiniKVDB},
 };
 
-use self::kv_command::{GetCommand, IncrementCommand, SetCommand};
+use self::kv_command::{DeleteCommand, GetCommand, Increment, IncrementCommand, SetCommand};
 
 pub mod kv_command;
 
@@ -16,10 +16,9 @@ pub struct KVStore(HashMap<Key, KVDBValue>);
 impl KVDBStore for KVStore {}
 
 impl KVStore {
-    pub fn set(&mut self, cmd: impl Into<SetCommand>) -> Result<()> {
+    pub fn set(&mut self, cmd: impl Into<SetCommand>) -> Result<Option<KVDBValue>> {
         let SetCommand(k, v) = cmd.into();
-        self.0.insert(k, v);
-        Ok(())
+        Ok(self.0.insert(k, v))
     }
 
     pub fn get(&self, cmd: impl Into<GetCommand>) -> Result<Option<KVDBValue>> {
@@ -27,22 +26,35 @@ impl KVStore {
         Ok(self.0.get(&k).cloned())
     }
 
-    pub fn increment(&mut self, cmd: impl Into<IncrementCommand>) -> Result<f32> {
+    pub fn delete(&mut self, cmd: impl Into<DeleteCommand>) -> Result<Option<KVDBValue>> {
+        let DeleteCommand(k) = cmd.into();
+        Ok(self.0.remove(&k))
+    }
+
+    pub fn increment(&mut self, cmd: impl Into<IncrementCommand>) -> Result<Increment> {
         let IncrementCommand(k, v) = cmd.into();
         if let Some(value) = self.0.get_mut(&k) {
             match value {
                 KVDBValue::Int(val) => {
-                    *val += v as i32;
-                    Ok(*val as f32)
+                    *val += match v {
+                        Increment::Int(v) => v,
+                        Increment::Float(v) => v as i32,
+                    };
+
+                    Ok(Increment::Int(*val))
                 }
                 KVDBValue::Float(val) => {
-                    *val += v;
-                    Ok(*val)
+                    *val += match v {
+                        Increment::Int(v) => v as f32,
+                        Increment::Float(v) => v,
+                    };
+
+                    Ok(Increment::Float(*val))
                 }
                 _ => Err(MiniKVDBError::CannotIncrement),
             }
         } else {
-            self.0.insert(k.to_owned(), KVDBValue::Float(v));
+            self.0.insert(k.to_owned(), v.into());
             Ok(v)
         }
     }
@@ -50,7 +62,11 @@ impl KVStore {
 
 // Key-Value store.
 impl MiniKVDB {
-    pub fn set(&self, key: impl Into<Key>, value: impl Into<KVDBValue>) -> Result<()> {
+    pub fn set(
+        &self,
+        key: impl Into<Key>,
+        value: impl Into<KVDBValue>,
+    ) -> Result<Option<KVDBValue>> {
         self.kv.write()?.set(SetCommand(key.into(), value.into()))
     }
 
@@ -58,9 +74,117 @@ impl MiniKVDB {
         self.kv.read()?.get(GetCommand(key.into()))
     }
 
-    pub fn increment(&self, key: impl Into<Key>, value: impl Into<f32>) -> Result<f32> {
+    pub fn del(&self, key: impl Into<Key>) -> Result<Option<KVDBValue>> {
+        self.kv.write()?.delete(DeleteCommand(key.into()))
+    }
+
+    pub fn increment(&self, key: impl Into<Key>, value: impl Into<Increment>) -> Result<Increment> {
         self.kv
             .write()?
             .increment(IncrementCommand(key.into(), value.into()))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    fn test_db() -> KVStore {
+        KVStore::default()
+    }
+
+    #[test]
+    fn sets_value() {
+        let mut db = test_db();
+
+        let ins = db.set(SetCommand("name".into(), "tom".into())).unwrap();
+        let replaced = db.set(SetCommand("name".into(), "bob".into())).unwrap();
+
+        assert!(replaced.is_some());
+        assert_eq!(replaced.unwrap(), KVDBValue::String("tom".into()));
+
+        assert_eq!(ins, None);
+        assert_eq!(
+            *db.0.get("name").unwrap(),
+            KVDBValue::String("bob".to_string())
+        );
+    }
+
+    #[test]
+    fn gets_value() {
+        let mut db = test_db();
+        let _ = db.set(SetCommand("name".into(), "tom".into()));
+
+        let e = db.get(GetCommand("name".into())).unwrap();
+
+        assert!(e.is_some());
+        assert_eq!(e.unwrap(), KVDBValue::String("tom".into()));
+    }
+
+    #[test]
+    fn deletes_value() {
+        let mut db = test_db();
+
+        let _ = db.set(SetCommand("name".into(), "tom".into()));
+        let _ = db.set(SetCommand("name1".into(), "tom1".into()));
+        let _ = db.set(SetCommand("name2".into(), "tom2".into()));
+
+        let deleted = db.delete(DeleteCommand("name1".into())).unwrap();
+        let empty = db.delete(DeleteCommand("name10".into())).unwrap();
+
+        assert_eq!(empty, None);
+
+        assert!(deleted.is_some());
+        assert_eq!(deleted.unwrap(), KVDBValue::String("tom1".into()));
+    }
+
+    #[test]
+    fn increment_empty_keys() {
+        let mut db = test_db();
+        let inc_int = db
+            .increment(IncrementCommand("a".into(), 5.into()))
+            .unwrap();
+
+        let inc_float = db
+            .increment(IncrementCommand("b".into(), 8.5.into()))
+            .unwrap();
+
+        assert_eq!(inc_int, Increment::Int(5));
+        assert_eq!(inc_float, Increment::Float(8.5));
+    }
+
+    #[test]
+    fn increments_values_with_correct_types() {
+        let mut db = test_db();
+        let _ = db.set(SetCommand("a".into(), 1.into()));
+        let _ = db.set(SetCommand("b".into(), 10.0.into()));
+        let _ = db.set(SetCommand("c".into(), "john".into()));
+
+        let inc_int_with_int = db
+            .increment(IncrementCommand("a".into(), 4.into()))
+            .unwrap();
+
+        let inc_int_with_float = db
+            .increment(IncrementCommand("a".into(), 4.9.into()))
+            .unwrap();
+
+        let inc_float_with_float = db
+            .increment(IncrementCommand("b".into(), 4.9.into()))
+            .unwrap();
+
+        let inc_float_with_int = db
+            .increment(IncrementCommand("b".into(), 5.into()))
+            .unwrap();
+
+        let inc_wrong_type = db.increment(IncrementCommand("c".into(), 1.into()));
+
+        assert!(inc_wrong_type.is_err());
+
+        assert_eq!(inc_int_with_int, Increment::Int(5));
+        assert_eq!(inc_int_with_float, Increment::Int(9));
+
+        assert_eq!(inc_float_with_float, Increment::Float(14.9));
+        assert_eq!(inc_float_with_int, Increment::Float(19.9));
     }
 }

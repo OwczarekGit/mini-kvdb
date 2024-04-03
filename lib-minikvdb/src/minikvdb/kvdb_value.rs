@@ -23,7 +23,7 @@ impl Display for KVDBValue {
             KVDBValue::Int(v) => write!(f, "{v}"),
             KVDBValue::Float(v) => write!(f, "{v}"),
             KVDBValue::Bool(v) => write!(f, "{v}"),
-            KVDBValue::String(v) => write!(f, "\"{v}\""),
+            KVDBValue::String(v) => write!(f, "{v}"),
             #[cfg(feature = "chrono")]
             KVDBValue::DateTimeUtc(v) => write!(f, "{v}"),
         }

@@ -7,6 +7,8 @@ fn main() {
 
     let _ = db.set("name", "Tom");
 
+    dbg!(db.increment("visits", 1));
+
     let _ = db.push_front(
         "things",
         values!(
