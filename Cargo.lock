@@ -201,14 +201,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "lib-minikvdb"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "serde",
-]
-
-[[package]]
 name = "libc"
 version = "0.2.153"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -219,6 +211,14 @@ name = "log"
 version = "0.4.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "90ed8c1e510134f979dbc4f070f87d4313098b704861a105fe34231c70a3901c"
+
+[[package]]
+name = "minikvdb"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "serde",
+]
 
 [[package]]
 name = "minikvdb-macros"
@@ -321,7 +321,7 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "clap",
- "lib-minikvdb",
+ "minikvdb",
  "minikvdb-macros",
  "serde_json",
 ]

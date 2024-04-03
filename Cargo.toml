@@ -1,5 +1,5 @@
 [workspace]
 resolver = "2"
 members = [
-    "lib-minikvdb", "minikvdb-macros", "test-app"
+    "minikvdb", "minikvdb-macros", "test-app"
 ]

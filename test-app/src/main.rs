@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use lib_minikvdb::{minikvdb::kvdb_key::Key, prelude::*};
+use minikvdb::{minikvdb::kvdb_key::Key, prelude::*};
 use minikvdb_macros::KVDBEntity;
 
 fn main() {
@@ -32,12 +32,12 @@ fn main() {
 
     dbg!(db.pop_back("things"));
     dbg!(db.pop_front("things"));
-    dbg!(db.list_range(("things", 0, 5)));
-    dbg!(db.list_range(("things", -2)));
     dbg!(db.list_len("things"));
 
-    // TODO: This should also work.
-    //dbg!(db.list_range("things"));
+    // TODO: Would be nice if you could ommit tuple parens.
+    dbg!(db.list_range(("things", 0_usize, 5_usize)));
+    dbg!(db.list_range(("things", 2_usize)));
+    dbg!(db.list_range(("things",)));
 
     // dbg!(&db);
 

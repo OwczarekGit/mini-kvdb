@@ -31,23 +31,23 @@ fn gen_into_hashmap(ast: &syn::DeriveInput) -> TokenStream {
     let fields_get = data.fields.iter().map(|f| {
         let name = &f.ident;
         quote!{
-            #name: v.get(stringify!(#name)).ok_or(lib_minikvdb::error::MiniKVDBError::MissingField(stringify!(#name).to_string()))?.try_into()?
+            #name: v.get(stringify!(#name)).ok_or(minikvdb::error::MiniKVDBError::MissingField(stringify!(#name).to_string()))?.try_into()?
         }
     });
 
     let gen = quote! {
         #[automatically_derived]
-        impl From<#name> for lib_minikvdb::prelude::KVDBObject {
-            fn from(v: #name) -> lib_minikvdb::prelude::KVDBObject {
+        impl From<#name> for minikvdb::prelude::KVDBObject {
+            fn from(v: #name) -> minikvdb::prelude::KVDBObject {
                 [
                     #(#fields,)*
                 ].into()
             }
         }
         #[automatically_derived]
-        impl TryFrom<lib_minikvdb::prelude::KVDBObject> for #name {
-            type Error = lib_minikvdb::error::MiniKVDBError;
-            fn try_from(v: lib_minikvdb::prelude::KVDBObject) -> Result<Self, Self::Error> {
+        impl TryFrom<minikvdb::prelude::KVDBObject> for #name {
+            type Error = minikvdb::error::MiniKVDBError;
+            fn try_from(v: minikvdb::prelude::KVDBObject) -> Result<Self, Self::Error> {
                     Ok(Self {
                         #(#fields_get,)*
                     })
