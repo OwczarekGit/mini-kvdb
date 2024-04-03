@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 use crate::{
     error::{MiniKVDBError, Result},
-    minikvdb::{kvdb_value::KVDBValue, KVDBStore, MiniKVDB},
+    minikvdb::{kvdb_key::Key, kvdb_value::KVDBValue, KVDBStore, MiniKVDB},
 };
 
 use self::kv_command::{GetCommand, IncrementCommand, SetCommand};
@@ -11,24 +11,25 @@ use self::kv_command::{GetCommand, IncrementCommand, SetCommand};
 pub mod kv_command;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
-pub struct KVStore(HashMap<String, KVDBValue>);
+pub struct KVStore(HashMap<Key, KVDBValue>);
 
 impl KVDBStore for KVStore {}
 
 impl KVStore {
-    pub fn set<'a>(store: &mut Self, cmd: impl Into<SetCommand<'a>>) -> Result<()> {
-        let cmd = cmd.into();
-        store.0.insert(cmd.0.to_owned(), cmd.1);
+    pub fn set(&mut self, cmd: impl Into<SetCommand>) -> Result<()> {
+        let SetCommand(k, v) = cmd.into();
+        self.0.insert(k, v);
         Ok(())
     }
 
-    pub fn get<'a>(store: &Self, cmd: impl Into<GetCommand<'a>>) -> Result<Option<KVDBValue>> {
-        Ok(store.0.get(cmd.into().0).cloned())
+    pub fn get(&self, cmd: impl Into<GetCommand>) -> Result<Option<KVDBValue>> {
+        let GetCommand(k) = cmd.into();
+        Ok(self.0.get(&k).cloned())
     }
 
-    pub fn increment<'a>(store: &mut Self, cmd: impl Into<IncrementCommand<'a>>) -> Result<f32> {
+    pub fn increment(&mut self, cmd: impl Into<IncrementCommand>) -> Result<f32> {
         let IncrementCommand(k, v) = cmd.into();
-        if let Some(value) = store.0.get_mut(k) {
+        if let Some(value) = self.0.get_mut(&k) {
             match value {
                 KVDBValue::Int(val) => {
                     *val += v as i32;
@@ -41,7 +42,7 @@ impl KVStore {
                 _ => Err(MiniKVDBError::CannotIncrement),
             }
         } else {
-            store.0.insert(k.to_owned(), KVDBValue::Float(v));
+            self.0.insert(k.to_owned(), KVDBValue::Float(v));
             Ok(v)
         }
     }
@@ -49,15 +50,17 @@ impl KVStore {
 
 // Key-Value store.
 impl MiniKVDB {
-    pub fn set<'a>(&self, key: impl Into<&'a str>, value: impl Into<KVDBValue>) -> Result<()> {
-        KVStore::set(&mut *self.kv.write()?, (key.into(), value.into()))
+    pub fn set(&self, key: impl Into<Key>, value: impl Into<KVDBValue>) -> Result<()> {
+        self.kv.write()?.set(SetCommand(key.into(), value.into()))
     }
 
-    pub fn get<'a>(&self, cmd: impl Into<GetCommand<'a>>) -> Result<Option<KVDBValue>> {
-        KVStore::get(&*self.kv.read()?, cmd)
+    pub fn get(&self, key: impl Into<Key>) -> Result<Option<KVDBValue>> {
+        self.kv.read()?.get(GetCommand(key.into()))
     }
 
-    pub fn increment<'a>(&self, key: impl Into<&'a str>, value: impl Into<f32>) -> Result<f32> {
-        KVStore::increment(&mut *self.kv.write()?, (key.into(), value.into()))
+    pub fn increment(&self, key: impl Into<Key>, value: impl Into<f32>) -> Result<f32> {
+        self.kv
+            .write()?
+            .increment(IncrementCommand(key.into(), value.into()))
     }
 }
