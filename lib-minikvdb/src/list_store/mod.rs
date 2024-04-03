@@ -6,7 +6,7 @@ use std::{
 
 use crate::{
     error::Result,
-    minikvdb::{kvdb_value::KVDBValue, KVDBStore, MiniKVDB},
+    minikvdb::{kvdb_key::Key, kvdb_value::KVDBValue, KVDBStore, MiniKVDB},
 };
 
 use self::list_command::{
@@ -17,72 +17,75 @@ use self::list_command::{
 pub mod list_command;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
-pub struct ListStore(HashMap<String, VecDeque<KVDBValue>>);
+pub struct ListStore(HashMap<Key, VecDeque<KVDBValue>>);
 
 impl KVDBStore for ListStore {}
 
 impl ListStore {
-    pub fn push_front<'a>(store: &mut Self, cmd: impl Into<PushFrontCommand<'a>>) -> Result<usize> {
+    pub fn push_front(&mut self, cmd: impl Into<PushFrontCommand>) -> Result<usize> {
         let PushFrontCommand(k, v) = cmd.into();
-        if let Some(list) = store.0.get_mut(k) {
+        if let Some(list) = self.0.get_mut(&k) {
             for value in v {
                 list.push_front(value.to_owned());
             }
             Ok(list.len())
         } else {
-            store.0.insert(k.to_owned(), v.into());
+            self.0.insert(k.to_owned(), v.into());
             Ok(1)
         }
     }
 
-    pub fn pop_front<'a>(
-        store: &mut Self,
-        cmd: impl Into<PopFrontCommand<'a>>,
-    ) -> Result<Option<KVDBValue>> {
+    pub fn pop_front(&mut self, cmd: impl Into<PopFrontCommand>) -> Result<Option<KVDBValue>> {
         let PopFrontCommand(k) = cmd.into();
-        if let Some(list) = store.0.get_mut(k) {
+        if let Some(list) = self.0.get_mut(&k) {
             Ok(list.pop_front())
         } else {
             Ok(None)
         }
     }
 
-    pub fn push_back<'a>(store: &mut Self, cmd: impl Into<PushBackCommand<'a>>) -> Result<usize> {
+    pub fn push_back(&mut self, cmd: impl Into<PushBackCommand>) -> Result<usize> {
         let PushBackCommand(k, v) = cmd.into();
-        if let Some(list) = store.0.get_mut(k) {
+        if let Some(list) = self.0.get_mut(&k) {
             for value in v {
                 list.push_back(value);
             }
             Ok(list.len())
         } else {
-            store.0.insert(k.to_owned(), v.into());
+            self.0.insert(k.to_owned(), v.into());
             Ok(1)
         }
     }
 
-    pub fn pop_back<'a>(
-        store: &mut Self,
-        cmd: impl Into<PopBackCommand<'a>>,
-    ) -> Result<Option<KVDBValue>> {
+    pub fn pop_back(&mut self, cmd: impl Into<PopBackCommand>) -> Result<Option<KVDBValue>> {
         let PopBackCommand(k) = cmd.into();
-        if let Some(list) = store.0.get_mut(k) {
+        if let Some(list) = self.0.get_mut(&k) {
             Ok(list.pop_back())
         } else {
             Ok(None)
         }
     }
 
-    pub fn range<'a>(store: &Self, cmd: impl Into<ListRangeCommand<'a>>) -> Result<Vec<KVDBValue>> {
+    pub fn range(&self, cmd: impl Into<ListRangeCommand>) -> Result<Vec<KVDBValue>> {
         let ListRangeCommand(k, start, count) = cmd.into();
-        if let Some(list) = store.0.get(k) {
-            if list.is_empty() {
+        if let Some(list) = self.0.get(&k) {
+            if list.is_empty() || (start > list.len() as i32 - 1 && count < 0) {
                 return Ok(vec![]);
             }
 
             let list: Vec<KVDBValue> = list.clone().into();
 
             if count < 0 {
-                return Ok(list[start as usize..].to_vec());
+                if start < 0 {
+                    let offset = list.len() as i32 - -start;
+                    if offset < 0 {
+                        return Ok(vec![]);
+                    } else {
+                        return Ok(list[offset as usize..].to_vec());
+                    }
+                } else {
+                    return Ok(list[start as usize..].to_vec());
+                }
             }
 
             Ok(list[start as usize..((start + count) as usize).min(list.len())].to_vec())
@@ -91,14 +94,14 @@ impl ListStore {
         }
     }
 
-    pub fn len<'a>(store: &Self, cmd: impl Into<ListLenCommmand<'a>>) -> Result<usize> {
+    pub fn len(&self, cmd: impl Into<ListLenCommmand>) -> Result<usize> {
         let ListLenCommmand(k) = cmd.into();
-        Ok(store.0.get(k).map(|l| l.len()).unwrap_or(0))
+        Ok(self.0.get(&k).map(|l| l.len()).unwrap_or(0))
     }
 
-    pub fn remove<'a>(store: &mut Self, cmd: impl Into<ListRemoveCommand<'a>>) -> Result<usize> {
+    pub fn remove(&mut self, cmd: impl Into<ListRemoveCommand>) -> Result<usize> {
         let ListRemoveCommand(k, mut c, v) = cmd.into();
-        if let Some(list) = store.0.get_mut(k) {
+        if let Some(list) = self.0.get_mut(&k) {
             let mut dc = 0;
             if c == 0 {
                 list.retain(|el| {
@@ -129,12 +132,9 @@ impl ListStore {
         }
     }
 
-    pub fn contains<'a>(
-        store: &Self,
-        cmd: impl Into<ListContainsValueCommand<'a>>,
-    ) -> Result<bool> {
+    pub fn contains(&self, cmd: impl Into<ListContainsValueCommand>) -> Result<bool> {
         let ListContainsValueCommand(k, v) = cmd.into();
-        if let Some(list) = store.0.get(k) {
+        if let Some(list) = self.0.get(&k) {
             Ok(list.iter().any(|i| *i == v))
         } else {
             Ok(false)
@@ -143,47 +143,49 @@ impl ListStore {
 }
 
 impl MiniKVDB {
-    pub fn push_front<'a>(
+    pub fn push_front(
         &self,
-        key: impl Into<&'a str>,
+        key: impl Into<Key>,
         values: impl Into<Vec<KVDBValue>>,
     ) -> Result<usize> {
-        ListStore::push_front(&mut *self.list.write()?, (key.into(), values.into()))
+        self.list
+            .write()?
+            .push_front(PushFrontCommand(key.into(), values.into()))
     }
 
-    pub fn pop_front<'a>(&self, cmd: impl Into<PopFrontCommand<'a>>) -> Result<Option<KVDBValue>> {
+    pub fn pop_front(&self, cmd: impl Into<PopFrontCommand>) -> Result<Option<KVDBValue>> {
         ListStore::pop_front(&mut *self.list.write()?, cmd)
     }
 
-    pub fn push_back<'a>(
+    pub fn push_back(
         &self,
-        key: impl Into<&'a str>,
+        key: impl Into<Key>,
         values: impl Into<Vec<KVDBValue>>,
     ) -> Result<usize> {
-        ListStore::push_back(&mut *self.list.write()?, (key.into(), values.into()))
+        self.list
+            .write()?
+            .push_back(PushBackCommand(key.into(), values.into()))
     }
 
-    pub fn pop_back<'a>(&self, cmd: impl Into<PopBackCommand<'a>>) -> Result<Option<KVDBValue>> {
-        ListStore::pop_back(&mut *self.list.write()?, cmd)
+    pub fn pop_back(&self, cmd: impl Into<PopBackCommand>) -> Result<Option<KVDBValue>> {
+        self.list.write()?.pop_back(cmd)
     }
 
-    pub fn list_range<'a>(&self, cmd: impl Into<ListRangeCommand<'a>>) -> Result<Vec<KVDBValue>> {
-        ListStore::range(&*self.list.read()?, cmd)
+    pub fn list_range(&self, cmd: impl Into<ListRangeCommand>) -> Result<Vec<KVDBValue>> {
+        self.list.read()?.range(cmd)
     }
 
-    pub fn list_len<'a>(&self, cmd: impl Into<ListLenCommmand<'a>>) -> Result<usize> {
-        ListStore::len(&*self.list.read()?, cmd)
+    pub fn list_len(&self, key: impl Into<Key>) -> Result<usize> {
+        self.list.read()?.len(ListLenCommmand(key.into()))
     }
 
-    pub fn list_remove<'a>(&self, cmd: impl Into<ListRemoveCommand<'a>>) -> Result<usize> {
-        ListStore::remove(&mut *self.list.write()?, cmd)
+    pub fn list_remove(&self, cmd: impl Into<ListRemoveCommand>) -> Result<usize> {
+        self.list.write()?.remove(cmd)
     }
 
-    pub fn list_contains<'a>(
-        &self,
-        key: impl Into<&'a str>,
-        value: impl Into<KVDBValue>,
-    ) -> Result<bool> {
-        ListStore::contains(&*self.list.read()?, (key.into(), value.into()))
+    pub fn list_contains(&self, key: impl Into<Key>, value: impl Into<KVDBValue>) -> Result<bool> {
+        self.list
+            .read()?
+            .contains(ListContainsValueCommand(key.into(), value.into()))
     }
 }

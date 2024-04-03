@@ -1,4 +1,4 @@
-use std::borrow::Borrow;
+use std::{borrow::Borrow, fmt::Display};
 
 use serde::{Deserialize, Serialize};
 
@@ -23,7 +23,7 @@ impl Borrow<String> for Key {
     }
 }
 
-impl<T: ToString> From<T> for Key {
+impl<T: Display> From<T> for Key {
     fn from(value: T) -> Self {
         Self(value.to_string())
     }

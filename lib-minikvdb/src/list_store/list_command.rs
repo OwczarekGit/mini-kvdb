@@ -1,121 +1,91 @@
-use crate::minikvdb::kvdb_value::KVDBValue;
+use crate::minikvdb::{kvdb_key::Key, kvdb_value::KVDBValue};
 
 #[derive(Debug, Clone)]
-pub struct PushFrontCommand<'a>(pub &'a str, pub Vec<KVDBValue>);
-
-impl<'a, T> From<(&'a str, T)> for PushFrontCommand<'a>
-where
-    T: Into<Vec<KVDBValue>>,
-{
-    fn from((k, v): (&'a str, T)) -> Self {
-        Self(k, v.into())
-    }
-}
+pub struct PushFrontCommand(pub Key, pub Vec<KVDBValue>);
 
 #[derive(Debug, Clone)]
-pub struct PopFrontCommand<'a>(pub &'a str);
+pub struct PopFrontCommand(pub Key);
 
-impl<'a, T> From<T> for PopFrontCommand<'a>
-where
-    T: Into<&'a str>,
-{
+impl<T: Into<Key>> From<T> for PopFrontCommand {
     fn from(value: T) -> Self {
         Self(value.into())
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct PushBackCommand<'a>(pub &'a str, pub Vec<KVDBValue>);
-
-impl<'a, T> From<(&'a str, T)> for PushBackCommand<'a>
-where
-    T: Into<Vec<KVDBValue>>,
-{
-    fn from((k, v): (&'a str, T)) -> Self {
-        Self(k, v.into())
-    }
-}
+pub struct PushBackCommand(pub Key, pub Vec<KVDBValue>);
 
 #[derive(Debug, Clone)]
-pub struct PopBackCommand<'a>(pub &'a str);
+pub struct PopBackCommand(pub Key);
 
-impl<'a, T> From<T> for PopBackCommand<'a>
-where
-    T: Into<&'a str>,
-{
+impl<T: Into<Key>> From<T> for PopBackCommand {
     fn from(value: T) -> Self {
         Self(value.into())
     }
 }
 
-pub struct ListRangeCommand<'a>(pub &'a str, pub i32, pub i32);
+#[derive(Debug, Clone)]
+pub struct ListRangeCommand(pub Key, pub i32, pub i32);
 
-impl<'a, K, T, V> From<(K, T, V)> for ListRangeCommand<'a>
+impl From<Key> for ListRangeCommand {
+    fn from(value: Key) -> Self {
+        Self(value, 0, -1)
+    }
+}
+
+impl<K: Into<Key>> From<(K,)> for ListRangeCommand {
+    fn from(value: (K,)) -> Self {
+        Self(value.0.into(), 0, -1)
+    }
+}
+
+impl<K, V> From<(K, V)> for ListRangeCommand
 where
-    K: Into<&'a str>,
-    T: Into<i32>,
+    K: Into<Key>,
     V: Into<i32>,
 {
-    fn from(v: (K, T, V)) -> Self {
-        Self(v.0.into(), v.1.into(), v.2.into())
+    fn from(value: (K, V)) -> Self {
+        Self(value.0.into(), value.1.into(), -1)
     }
 }
 
-impl<'a, K, T> From<(K, T)> for ListRangeCommand<'a>
+impl<K, C, V> From<(K, C, V)> for ListRangeCommand
 where
-    K: Into<&'a str>,
-    T: Into<i32>,
-{
-    fn from(v: (K, T)) -> Self {
-        Self(v.0.into(), v.1.into(), -1)
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct ListLenCommmand<'a>(pub &'a str);
-
-impl<'a, T> From<T> for ListLenCommmand<'a>
-where
-    T: Into<&'a str>,
-{
-    fn from(value: T) -> Self {
-        Self(value.into())
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct ListRemoveCommand<'a>(pub &'a str, pub i32, pub KVDBValue);
-
-impl<'a, K, C, T> From<(K, C, T)> for ListRemoveCommand<'a>
-where
-    K: Into<&'a str>,
+    K: Into<Key>,
     C: Into<i32>,
-    T: Into<KVDBValue>,
+    V: Into<i32>,
 {
-    fn from(value: (K, C, T)) -> Self {
+    fn from(value: (K, C, V)) -> Self {
         Self(value.0.into(), value.1.into(), value.2.into())
     }
 }
 
-impl<'a, K, T> From<(K, T)> for ListRemoveCommand<'a>
+#[derive(Debug, Clone)]
+pub struct ListLenCommmand(pub Key);
+
+#[derive(Debug, Clone)]
+pub struct ListContainsValueCommand(pub Key, pub KVDBValue);
+
+#[derive(Debug, Clone)]
+pub struct ListRemoveCommand(pub Key, pub i32, pub KVDBValue);
+
+impl<K, V> From<(K, V)> for ListRemoveCommand
 where
-    K: Into<&'a str>,
-    T: Into<KVDBValue>,
+    K: Into<Key>,
+    V: Into<KVDBValue>,
 {
-    fn from(value: (K, T)) -> Self {
+    fn from(value: (K, V)) -> Self {
         Self(value.0.into(), 0, value.1.into())
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct ListContainsValueCommand<'a>(pub &'a str, pub KVDBValue);
-
-impl<'a, K, V> From<(K, V)> for ListContainsValueCommand<'a>
+impl<K, C, V> From<(K, C, V)> for ListRemoveCommand
 where
-    K: Into<&'a str>,
+    K: Into<Key>,
+    C: Into<i32>,
     V: Into<KVDBValue>,
 {
-    fn from(value: (K, V)) -> Self {
-        Self(value.0.into(), value.1.into())
+    fn from(value: (K, C, V)) -> Self {
+        Self(value.0.into(), value.1.into(), value.2.into())
     }
 }

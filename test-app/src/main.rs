@@ -24,9 +24,18 @@ fn main() {
         ),
     );
 
-    dbg!(db.list_contains("things", true));
+    dbg!(db.list_contains(format!("{}", "things"), true));
     dbg!(db.list_remove(("things", true)));
     dbg!(db.list_contains("things", true));
+
+    dbg!(db.pop_back("things"));
+    dbg!(db.pop_front("things"));
+    dbg!(db.list_range(("things", 0, 5)));
+    dbg!(db.list_range(("things", -2)));
+    dbg!(db.list_len("things"));
+
+    // TODO: This should also work.
+    //dbg!(db.list_range("things"));
 
     // dbg!(&db);
 
