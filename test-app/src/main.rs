@@ -63,6 +63,7 @@ fn main() {
         },
     );
     dbg!(db.hash_get_object::<Credentials>("cred:3.141529"));
+    dbg!(db.hash_contains_key("user:2"));
 
     let _x = Utc::now();
 

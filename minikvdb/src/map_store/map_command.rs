@@ -14,3 +14,6 @@ pub struct DeleteCommand(pub Key);
 
 #[derive(Debug, Clone)]
 pub struct GetObjectCommand(pub Key);
+
+#[derive(Debug, Clone)]
+pub struct ContainsKeyCommand(pub Key);

@@ -7,7 +7,9 @@ use crate::{
     prelude::KVDBObject,
 };
 
-use self::map_command::{DeleteCommand, GetAllCommand, GetCommand, GetObjectCommand, SetCommand};
+use self::map_command::{
+    ContainsKeyCommand, DeleteCommand, GetAllCommand, GetCommand, GetObjectCommand, SetCommand,
+};
 
 pub mod map_command;
 
@@ -29,6 +31,11 @@ impl MapStore {
         } else {
             Ok(None)
         }
+    }
+
+    pub fn contains_key(&self, cmd: impl Into<ContainsKeyCommand>) -> Result<bool> {
+        let ContainsKeyCommand(key) = cmd.into();
+        Ok(self.0.contains_key(&key))
     }
 
     pub fn get_all(
@@ -81,6 +88,12 @@ impl MiniKVDB {
 
     pub fn hash_get_all(&self, key: impl Into<Key>) -> Result<Option<KVDBObject>> {
         self.map.read()?.get_all(GetAllCommand(key.into()))
+    }
+
+    pub fn hash_contains_key(&self, key: impl Into<Key>) -> Result<bool> {
+        self.map
+            .read()?
+            .contains_key(ContainsKeyCommand(key.into()))
     }
 
     pub fn hash_get_object<T: TryFrom<KVDBObject>>(
