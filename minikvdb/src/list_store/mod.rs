@@ -19,13 +19,13 @@ pub struct ListStore(HashMap<Key, VecDeque<KVDBValue>>);
 impl KVDBStore for ListStore {}
 
 impl ListStore {
-    pub fn push_front(&mut self, cmd: impl Into<PushFrontCommand>) -> Result<usize> {
+    pub fn push_front(&mut self, cmd: impl Into<PushFrontCommand>) -> usize {
         let PushFrontCommand(k, v) = cmd.into();
         if let Some(list) = self.0.get_mut(&k) {
             for value in v {
                 list.push_front(value.to_owned());
             }
-            Ok(list.len())
+            list.len()
         } else {
             let len = v.len();
             self.0.insert(k.clone(), Default::default());
@@ -33,86 +33,86 @@ impl ListStore {
             for value in v {
                 db.push_front(value);
             }
-            Ok(len)
+            len
         }
     }
 
-    pub fn pop_front(&mut self, cmd: impl Into<PopFrontCommand>) -> Result<Option<KVDBValue>> {
+    pub fn pop_front(&mut self, cmd: impl Into<PopFrontCommand>) -> Option<KVDBValue> {
         let PopFrontCommand(k) = cmd.into();
         if let Some(list) = self.0.get_mut(&k) {
             let pop = list.pop_front();
             if list.is_empty() {
                 self.0.remove(&k);
             }
-            Ok(pop)
+            pop
         } else {
-            Ok(None)
+            None
         }
     }
 
-    pub fn push_back(&mut self, cmd: impl Into<PushBackCommand>) -> Result<usize> {
+    pub fn push_back(&mut self, cmd: impl Into<PushBackCommand>) -> usize {
         let PushBackCommand(k, v) = cmd.into();
         if let Some(list) = self.0.get_mut(&k) {
             for value in v {
                 list.push_back(value);
             }
-            Ok(list.len())
+            list.len()
         } else {
             let len = v.len();
             self.0.insert(k.to_owned(), v.into());
-            Ok(len)
+            len
         }
     }
 
-    pub fn pop_back(&mut self, cmd: impl Into<PopBackCommand>) -> Result<Option<KVDBValue>> {
+    pub fn pop_back(&mut self, cmd: impl Into<PopBackCommand>) -> Option<KVDBValue> {
         let PopBackCommand(k) = cmd.into();
         if let Some(list) = self.0.get_mut(&k) {
             let pop = list.pop_back();
             if list.is_empty() {
                 self.0.remove(&k);
             }
-            Ok(pop)
+            pop
         } else {
-            Ok(None)
+            None
         }
     }
 
-    pub fn range(&self, cmd: impl Into<ListRangeCommand>) -> Result<Option<Vec<KVDBValue>>> {
+    pub fn range(&self, cmd: impl Into<ListRangeCommand>) -> Option<Vec<KVDBValue>> {
         let ListRangeCommand(k, opts) = cmd.into();
 
         if let Some(list) = self.0.get(&k) {
             match opts {
-                list_command::ListRangeOption::Whole => Ok(Some(list.clone().into())),
+                list_command::ListRangeOption::Whole => Some(list.clone().into()),
                 list_command::ListRangeOption::FromIndex(start) => {
                     if start < list.len() {
                         let list: Vec<KVDBValue> = list.clone().into();
                         let list = list[start..].to_vec();
-                        Ok(Some(list))
+                        Some(list)
                     } else {
-                        Ok(Some(vec![]))
+                        Some(vec![])
                     }
                 }
                 list_command::ListRangeOption::FromIndexWithLen(start, count) => {
                     if start < list.len() {
                         let list: Vec<KVDBValue> = list.clone().into();
                         let list = list[start..=(start + count).min(list.len() - 1)].to_vec();
-                        Ok(Some(list))
+                        Some(list)
                     } else {
-                        Ok(Some(vec![]))
+                        Some(vec![])
                     }
                 }
             }
         } else {
-            Ok(None)
+            None
         }
     }
 
-    pub fn len(&self, cmd: impl Into<ListLenCommmand>) -> Result<Option<usize>> {
+    pub fn len(&self, cmd: impl Into<ListLenCommmand>) -> Option<usize> {
         let ListLenCommmand(k) = cmd.into();
-        Ok(self.0.get(&k).map(|l| l.len()))
+        self.0.get(&k).map(|l| l.len())
     }
 
-    pub fn remove(&mut self, cmd: impl Into<ListRemoveCommand>) -> Result<usize> {
+    pub fn remove(&mut self, cmd: impl Into<ListRemoveCommand>) -> usize {
         let ListRemoveCommand(k, opts) = cmd.into();
 
         match opts {
@@ -132,9 +132,9 @@ impl ListStore {
                         self.0.remove(&k);
                     }
 
-                    Ok(dc)
+                    dc
                 } else {
-                    Ok(0)
+                    0
                 }
             }
             list_command::ListRemoveOption::Count(mut n, v) => {
@@ -154,20 +154,20 @@ impl ListStore {
                         self.0.remove(&k);
                     }
 
-                    Ok(dc)
+                    dc
                 } else {
-                    Ok(0)
+                    0
                 }
             }
         }
     }
 
-    pub fn contains(&self, cmd: impl Into<ListContainsValueCommand>) -> Result<bool> {
+    pub fn contains(&self, cmd: impl Into<ListContainsValueCommand>) -> bool {
         let ListContainsValueCommand(k, v) = cmd.into();
         if let Some(list) = self.0.get(&k) {
-            Ok(list.iter().any(|i| *i == v))
+            list.iter().any(|i| *i == v)
         } else {
-            Ok(false)
+            false
         }
     }
 }
@@ -178,13 +178,14 @@ impl MiniKVDB {
         key: impl Into<Key>,
         values: impl Into<Vec<KVDBValue>>,
     ) -> Result<usize> {
-        self.list
+        Ok(self
+            .list
             .write()?
-            .push_front(PushFrontCommand(key.into(), values.into()))
+            .push_front(PushFrontCommand(key.into(), values.into())))
     }
 
     pub fn pop_front(&self, cmd: impl Into<PopFrontCommand>) -> Result<Option<KVDBValue>> {
-        ListStore::pop_front(&mut *self.list.write()?, cmd)
+        Ok(ListStore::pop_front(&mut *self.list.write()?, cmd))
     }
 
     pub fn push_back(
@@ -192,31 +193,33 @@ impl MiniKVDB {
         key: impl Into<Key>,
         values: impl Into<Vec<KVDBValue>>,
     ) -> Result<usize> {
-        self.list
+        Ok(self
+            .list
             .write()?
-            .push_back(PushBackCommand(key.into(), values.into()))
+            .push_back(PushBackCommand(key.into(), values.into())))
     }
 
     pub fn pop_back(&self, cmd: impl Into<PopBackCommand>) -> Result<Option<KVDBValue>> {
-        self.list.write()?.pop_back(cmd)
+        Ok(self.list.write()?.pop_back(cmd))
     }
 
     pub fn list_range(&self, cmd: impl Into<ListRangeCommand>) -> Result<Option<Vec<KVDBValue>>> {
-        self.list.read()?.range(cmd)
+        Ok(self.list.read()?.range(cmd))
     }
 
     pub fn list_len(&self, key: impl Into<Key>) -> Result<Option<usize>> {
-        self.list.read()?.len(ListLenCommmand(key.into()))
+        Ok(self.list.read()?.len(ListLenCommmand(key.into())))
     }
 
     pub fn list_remove(&self, cmd: impl Into<ListRemoveCommand>) -> Result<usize> {
-        self.list.write()?.remove(cmd)
+        Ok(self.list.write()?.remove(cmd))
     }
 
     pub fn list_contains(&self, key: impl Into<Key>, value: impl Into<KVDBValue>) -> Result<bool> {
-        self.list
+        Ok(self
+            .list
             .read()?
-            .contains(ListContainsValueCommand(key.into(), value.into()))
+            .contains(ListContainsValueCommand(key.into(), value.into())))
     }
 }
 
@@ -237,9 +240,7 @@ mod tests {
     #[test]
     fn pushes_back() {
         let mut db = test_db();
-        let res = db
-            .push_back(PushBackCommand("a".into(), values!(1, 2, 3, 4)))
-            .unwrap();
+        let res = db.push_back(PushBackCommand("a".into(), values!(1, 2, 3, 4)));
 
         assert_eq!(res, 4);
         assert_eq!(db.0.get("a").unwrap().clone(), values!(1, 2, 3, 4));
@@ -249,9 +250,7 @@ mod tests {
     fn pushes_back_to_existing() {
         let mut db = test_db();
         let _ = db.push_back(PushBackCommand("a".into(), values!(22)));
-        let res = db
-            .push_back(PushBackCommand("a".into(), values!(1, 2, 3, 4)))
-            .unwrap();
+        let res = db.push_back(PushBackCommand("a".into(), values!(1, 2, 3, 4)));
 
         assert_eq!(res, 5);
         assert_eq!(db.0.get("a").unwrap().clone(), values!(22, 1, 2, 3, 4));
@@ -260,9 +259,7 @@ mod tests {
     #[test]
     fn pushes_front() {
         let mut db = test_db();
-        let res = db
-            .push_front(PushFrontCommand("a".into(), values!(1, 2, 3, 4)))
-            .unwrap();
+        let res = db.push_front(PushFrontCommand("a".into(), values!(1, 2, 3, 4)));
 
         assert_eq!(res, 4);
         assert_eq!(db.0.get("a").unwrap().clone(), values!(4, 3, 2, 1));
@@ -272,9 +269,7 @@ mod tests {
     fn pushes_front_to_existing() {
         let mut db = test_db();
         let _ = db.push_front(PushFrontCommand("a".into(), values!(33)));
-        let res = db
-            .push_front(PushFrontCommand("a".into(), values!(1, 2, 3, 4)))
-            .unwrap();
+        let res = db.push_front(PushFrontCommand("a".into(), values!(1, 2, 3, 4)));
 
         assert_eq!(res, 5);
         assert_eq!(db.0.get("a").unwrap().clone(), values!(4, 3, 2, 1, 33));
@@ -285,12 +280,12 @@ mod tests {
         let mut db = test_db();
         let _ = db.push_back(PushBackCommand("a".into(), values!(1, 2, 3, 4, 5)));
         for i in (1..=5).rev() {
-            let pop = db.pop_back(PopBackCommand("a".into())).unwrap();
+            let pop = db.pop_back(PopBackCommand("a".into()));
             assert!(pop.is_some());
             assert_eq!(pop.unwrap(), KVDBValue::Int(i));
         }
 
-        let pop = db.pop_back(PopBackCommand("a".into())).unwrap();
+        let pop = db.pop_back(PopBackCommand("a".into()));
         assert!(pop.is_none());
         assert!(db.0.get("a").is_none());
     }
@@ -300,12 +295,12 @@ mod tests {
         let mut db = test_db();
         let _ = db.push_back(PushBackCommand("a".into(), values!(1, 2, 3, 4, 5)));
         for i in 1..=5 {
-            let pop = db.pop_front(PopFrontCommand("a".into())).unwrap();
+            let pop = db.pop_front(PopFrontCommand("a".into()));
             assert!(pop.is_some());
             assert_eq!(pop.unwrap(), KVDBValue::Int(i));
         }
 
-        let pop = db.pop_front(PopFrontCommand("a".into())).unwrap();
+        let pop = db.pop_front(PopFrontCommand("a".into()));
         assert!(pop.is_none());
         assert!(db.0.get("a").is_none());
     }
@@ -314,11 +309,11 @@ mod tests {
     fn gets_list_len() {
         let mut db = test_db();
         let _ = db.push_back(PushBackCommand("a".into(), values!(1, 2, 3, 4, 5)));
-        let len = db.len(ListLenCommmand("a".into())).unwrap();
+        let len = db.len(ListLenCommmand("a".into()));
         assert!(len.is_some());
         assert_eq!(len.unwrap(), 5);
 
-        let empty_list_len = db.len(ListLenCommmand("qwe".into())).unwrap();
+        let empty_list_len = db.len(ListLenCommmand("qwe".into()));
         assert!(empty_list_len.is_none());
     }
 
@@ -340,12 +335,10 @@ mod tests {
     #[test]
     fn removes_nothing_when_non_existing_key() {
         let mut db = seeded_db();
-        let del_num = db
-            .remove(ListRemoveCommand(
-                "abscent".into(),
-                ListRemoveOption::All(false.into()),
-            ))
-            .unwrap();
+        let del_num = db.remove(ListRemoveCommand(
+            "abscent".into(),
+            ListRemoveOption::All(false.into()),
+        ));
 
         assert_eq!(del_num, 0);
     }
@@ -354,12 +347,10 @@ mod tests {
     fn when_list_becomes_empty_after_remove_said_list_gets_removed() {
         let mut db = test_db();
         let _ = db.push_back(PushBackCommand("items".into(), values!(2, 2, 2, 2, 2)));
-        let count = db
-            .remove(ListRemoveCommand(
-                "items".into(),
-                ListRemoveOption::All(2.into()),
-            ))
-            .unwrap();
+        let count = db.remove(ListRemoveCommand(
+            "items".into(),
+            ListRemoveOption::All(2.into()),
+        ));
         assert_eq!(count, 5);
         assert!(db.0.get("items").is_none());
     }
@@ -367,12 +358,10 @@ mod tests {
     #[test]
     fn removes_all() {
         let mut db = seeded_db();
-        let del_num = db
-            .remove(ListRemoveCommand(
-                "mixed".into(),
-                ListRemoveOption::All(false.into()),
-            ))
-            .unwrap();
+        let del_num = db.remove(ListRemoveCommand(
+            "mixed".into(),
+            ListRemoveOption::All(false.into()),
+        ));
 
         assert_eq!(del_num, 2);
         assert_eq!(
@@ -384,12 +373,10 @@ mod tests {
     #[test]
     fn removes_specified_number_of_items() {
         let mut db = seeded_db();
-        let del_num = db
-            .remove(ListRemoveCommand(
-                "mixed".into(),
-                ListRemoveOption::Count(1, false.into()),
-            ))
-            .unwrap();
+        let del_num = db.remove(ListRemoveCommand(
+            "mixed".into(),
+            ListRemoveOption::Count(1, false.into()),
+        ));
 
         assert_eq!(del_num, 1);
         assert_eq!(
@@ -401,39 +388,31 @@ mod tests {
     #[test]
     fn contains_value_on_existing_key() {
         let db = seeded_db();
-        let contains_4 = db
-            .contains(ListContainsValueCommand("mixed".into(), 4.into()))
-            .unwrap();
+        let contains_4 = db.contains(ListContainsValueCommand("mixed".into(), 4.into()));
         assert!(contains_4);
     }
 
     #[test]
     fn does_not_contain_value_on_existing_key() {
         let db = seeded_db();
-        let contains_44 = db
-            .contains(ListContainsValueCommand("mixed".into(), 44.into()))
-            .unwrap();
+        let contains_44 = db.contains(ListContainsValueCommand("mixed".into(), 44.into()));
         assert!(!contains_44);
     }
 
     #[test]
     fn does_not_contain_value_on_non_existing_key() {
         let db = seeded_db();
-        let contains = db
-            .contains(ListContainsValueCommand(
-                "non_existing_key".into(),
-                4.into(),
-            ))
-            .unwrap();
+        let contains = db.contains(ListContainsValueCommand(
+            "non_existing_key".into(),
+            4.into(),
+        ));
         assert!(!contains);
     }
 
     #[test]
     fn gets_entire_when_calling_range_on_existing_key() {
         let db = seeded_db();
-        let list = db
-            .range(ListRangeCommand("ints".into(), ListRangeOption::Whole))
-            .unwrap();
+        let list = db.range(ListRangeCommand("ints".into(), ListRangeOption::Whole));
         assert!(list.is_some());
         assert_eq!(list.unwrap(), values!(1, 2, 3, 4, 5, 6));
     }
@@ -441,24 +420,20 @@ mod tests {
     #[test]
     fn gets_none_when_calling_range_on_non_existing_key() {
         let db = seeded_db();
-        let list = db
-            .range(ListRangeCommand(
-                "non_existing".into(),
-                ListRangeOption::Whole,
-            ))
-            .unwrap();
+        let list = db.range(ListRangeCommand(
+            "non_existing".into(),
+            ListRangeOption::Whole,
+        ));
         assert!(list.is_none());
     }
 
     #[test]
     fn gets_list_from_specified_start_index_to_the_end_when_calling_range_on_existing_key() {
         let db = seeded_db();
-        let list = db
-            .range(ListRangeCommand(
-                "mixed".into(),
-                ListRangeOption::FromIndex(4),
-            ))
-            .unwrap();
+        let list = db.range(ListRangeCommand(
+            "mixed".into(),
+            ListRangeOption::FromIndex(4),
+        ));
         assert!(list.is_some());
         assert_eq!(list.unwrap(), values!(false, false, "text"));
     }
@@ -466,12 +441,10 @@ mod tests {
     #[test]
     fn gets_empty_list_when_calling_range_on_existing_key_with_start_outside_of_bounds() {
         let db = seeded_db();
-        let list = db
-            .range(ListRangeCommand(
-                "mixed".into(),
-                ListRangeOption::FromIndex(99),
-            ))
-            .unwrap();
+        let list = db.range(ListRangeCommand(
+            "mixed".into(),
+            ListRangeOption::FromIndex(99),
+        ));
         assert!(list.is_some());
         assert!(list.unwrap().is_empty());
     }
@@ -479,12 +452,10 @@ mod tests {
     #[test]
     fn gets_count_from_start_when_calling_rango_on_existing_key() {
         let db = seeded_db();
-        let list = db
-            .range(ListRangeCommand(
-                "mixed".into(),
-                ListRangeOption::FromIndexWithLen(2, 2),
-            ))
-            .unwrap();
+        let list = db.range(ListRangeCommand(
+            "mixed".into(),
+            ListRangeOption::FromIndexWithLen(2, 2),
+        ));
         assert!(list.is_some());
         assert_eq!(list.unwrap(), values!(true, 4, false));
     }
@@ -493,12 +464,10 @@ mod tests {
     fn gets_to_end_from_start_when_calling_rango_on_existing_key_when_count_plus_start_is_out_of_bounds(
     ) {
         let db = seeded_db();
-        let list = db
-            .range(ListRangeCommand(
-                "mixed".into(),
-                ListRangeOption::FromIndexWithLen(2, 2000),
-            ))
-            .unwrap();
+        let list = db.range(ListRangeCommand(
+            "mixed".into(),
+            ListRangeOption::FromIndexWithLen(2, 2000),
+        ));
         assert!(list.is_some());
         assert_eq!(list.unwrap(), values!(true, 4, false, false, "text"));
     }
@@ -509,12 +478,10 @@ mod tests {
         let mut db = seeded_db();
         db.0.insert("empty".into(), vec![].into());
 
-        let list = db
-            .range(ListRangeCommand(
-                "empty".into(),
-                ListRangeOption::FromIndexWithLen(2, 2000),
-            ))
-            .unwrap();
+        let list = db.range(ListRangeCommand(
+            "empty".into(),
+            ListRangeOption::FromIndexWithLen(2, 2000),
+        ));
         assert!(list.is_some());
         assert_eq!(list.unwrap(), vec![]);
     }

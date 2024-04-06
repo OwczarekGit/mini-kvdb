@@ -19,35 +19,28 @@ pub struct MapStore(HashMap<Key, KVDBObject>);
 impl KVDBStore for MapStore {}
 
 impl MapStore {
-    pub fn set(&mut self, cmd: impl Into<SetCommand>) -> Result<Option<KVDBObject>> {
+    pub fn set(&mut self, cmd: impl Into<SetCommand>) -> Option<KVDBObject> {
         let SetCommand(k, v) = cmd.into();
-        Ok(self.0.insert(k.to_owned(), v))
+        self.0.insert(k.to_owned(), v)
     }
 
-    pub fn get(&self, cmd: impl Into<GetCommand>) -> Result<Option<KVDBValue>> {
+    pub fn get(&self, cmd: impl Into<GetCommand>) -> Option<KVDBValue> {
         let GetCommand(k, field) = cmd.into();
         if let Some(store) = self.0.get(&k) {
-            Ok(store.get(&field).cloned())
+            store.get(&field).cloned()
         } else {
-            Ok(None)
+            None
         }
     }
 
-    pub fn contains_key(&self, cmd: impl Into<ContainsKeyCommand>) -> Result<bool> {
+    pub fn contains_key(&self, cmd: impl Into<ContainsKeyCommand>) -> bool {
         let ContainsKeyCommand(key) = cmd.into();
-        Ok(self.0.contains_key(&key))
+        self.0.contains_key(&key)
     }
 
-    pub fn get_all(
-        &self,
-        cmd: impl Into<GetAllCommand>,
-    ) -> Result<Option<HashMap<Key, KVDBValue>>> {
+    pub fn get_all(&self, cmd: impl Into<GetAllCommand>) -> Option<HashMap<Key, KVDBValue>> {
         let GetAllCommand(k) = cmd.into();
-        if let Some(v) = self.0.get(&k) {
-            Ok(Some(v.clone()))
-        } else {
-            Ok(None)
-        }
+        self.0.get(&k).cloned()
     }
 
     pub fn get_object<T: TryFrom<KVDBObject>>(
@@ -64,8 +57,8 @@ impl MapStore {
         }
     }
 
-    pub fn delete(&mut self, cmd: impl Into<DeleteCommand>) -> Result<Option<KVDBObject>> {
-        Ok(self.0.remove(&cmd.into().0))
+    pub fn delete(&mut self, cmd: impl Into<DeleteCommand>) -> Option<KVDBObject> {
+        self.0.remove(&cmd.into().0)
     }
 }
 
@@ -75,7 +68,7 @@ impl MiniKVDB {
         key: impl Into<Key>,
         value: impl Into<KVDBObject>,
     ) -> Result<Option<KVDBObject>> {
-        self.map.write()?.set(SetCommand(key.into(), value.into()))
+        Ok(self.map.write()?.set(SetCommand(key.into(), value.into())))
     }
 
     pub fn hash_get(
@@ -83,17 +76,18 @@ impl MiniKVDB {
         key: impl Into<Key>,
         field: impl Into<Key>,
     ) -> Result<Option<KVDBValue>> {
-        self.map.read()?.get(GetCommand(key.into(), field.into()))
+        Ok(self.map.read()?.get(GetCommand(key.into(), field.into())))
     }
 
     pub fn hash_get_all(&self, key: impl Into<Key>) -> Result<Option<KVDBObject>> {
-        self.map.read()?.get_all(GetAllCommand(key.into()))
+        Ok(self.map.read()?.get_all(GetAllCommand(key.into())))
     }
 
     pub fn hash_contains_key(&self, key: impl Into<Key>) -> Result<bool> {
-        self.map
+        Ok(self
+            .map
             .read()?
-            .contains_key(ContainsKeyCommand(key.into()))
+            .contains_key(ContainsKeyCommand(key.into())))
     }
 
     pub fn hash_get_object<T: TryFrom<KVDBObject>>(
@@ -104,7 +98,7 @@ impl MiniKVDB {
     }
 
     pub fn hash_delete(&self, key: impl Into<Key>) -> Result<Option<KVDBObject>> {
-        self.map.write()?.delete(DeleteCommand(key.into()))
+        Ok(self.map.write()?.delete(DeleteCommand(key.into())))
     }
 }
 
@@ -119,31 +113,26 @@ mod tests {
     #[test]
     fn sets_value_on_empty_key() {
         let mut db = test_db();
-        let ret = db
-            .set(SetCommand(
-                "a".into(),
-                [("name".into(), "tom".into())].into(),
-            ))
-            .unwrap();
+        let ret = db.set(SetCommand(
+            "a".into(),
+            [("name".into(), "tom".into())].into(),
+        ));
+
         assert!(ret.is_none());
     }
 
     #[test]
     fn sets_value_on_non_empty_key_and_returns_old() {
         let mut db = test_db();
-        let _ = db
-            .set(SetCommand(
-                "a".into(),
-                [("name".into(), "bob".into())].into(),
-            ))
-            .unwrap();
+        let _ = db.set(SetCommand(
+            "a".into(),
+            [("name".into(), "bob".into())].into(),
+        ));
 
-        let ret = db
-            .set(SetCommand(
-                "a".into(),
-                [("name".into(), "tom".into())].into(),
-            ))
-            .unwrap();
+        let ret = db.set(SetCommand(
+            "a".into(),
+            [("name".into(), "tom".into())].into(),
+        ));
         assert!(ret.is_some());
         assert_eq!(
             *ret.unwrap().get("name".into()).unwrap(),
@@ -183,7 +172,7 @@ mod tests {
     #[test]
     fn gets_value_from_existing_key() {
         let db = seeded_db();
-        let res = db.get_all(GetAllCommand("a".into())).unwrap();
+        let res = db.get_all(GetAllCommand("a".into()));
 
         assert!(res.is_some());
         let res = res.unwrap();
@@ -198,7 +187,7 @@ mod tests {
     #[test]
     fn gets_none_when_called_on_empty_key() {
         let db = seeded_db();
-        let res = db.get_all(GetAllCommand("asdf".into())).unwrap();
+        let res = db.get_all(GetAllCommand("asdf".into()));
 
         assert!(res.is_none());
     }
@@ -206,7 +195,7 @@ mod tests {
     #[test]
     fn gets_value_when_deleted_existing_key() {
         let mut db = seeded_db();
-        let res = db.delete(DeleteCommand("b".into())).unwrap();
+        let res = db.delete(DeleteCommand("b".into()));
         assert!(res.is_some());
         let res = res.unwrap();
         assert_eq!(

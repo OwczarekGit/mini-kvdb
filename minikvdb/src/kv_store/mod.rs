@@ -16,19 +16,19 @@ pub struct KVStore(HashMap<Key, KVDBValue>);
 impl KVDBStore for KVStore {}
 
 impl KVStore {
-    pub fn set(&mut self, cmd: impl Into<SetCommand>) -> Result<Option<KVDBValue>> {
+    pub fn set(&mut self, cmd: impl Into<SetCommand>) -> Option<KVDBValue> {
         let SetCommand(k, v) = cmd.into();
-        Ok(self.0.insert(k, v))
+        self.0.insert(k, v)
     }
 
-    pub fn get(&self, cmd: impl Into<GetCommand>) -> Result<Option<KVDBValue>> {
+    pub fn get(&self, cmd: impl Into<GetCommand>) -> Option<KVDBValue> {
         let GetCommand(k) = cmd.into();
-        Ok(self.0.get(&k).cloned())
+        self.0.get(&k).cloned()
     }
 
-    pub fn delete(&mut self, cmd: impl Into<DeleteCommand>) -> Result<Option<KVDBValue>> {
+    pub fn delete(&mut self, cmd: impl Into<DeleteCommand>) -> Option<KVDBValue> {
         let DeleteCommand(k) = cmd.into();
-        Ok(self.0.remove(&k))
+        self.0.remove(&k)
     }
 
     pub fn increment(&mut self, cmd: impl Into<IncrementCommand>) -> Result<Increment> {
@@ -67,15 +67,15 @@ impl MiniKVDB {
         key: impl Into<Key>,
         value: impl Into<KVDBValue>,
     ) -> Result<Option<KVDBValue>> {
-        self.kv.write()?.set(SetCommand(key.into(), value.into()))
+        Ok(self.kv.write()?.set(SetCommand(key.into(), value.into())))
     }
 
     pub fn get(&self, key: impl Into<Key>) -> Result<Option<KVDBValue>> {
-        self.kv.read()?.get(GetCommand(key.into()))
+        Ok(self.kv.read()?.get(GetCommand(key.into())))
     }
 
     pub fn del(&self, key: impl Into<Key>) -> Result<Option<KVDBValue>> {
-        self.kv.write()?.delete(DeleteCommand(key.into()))
+        Ok(self.kv.write()?.delete(DeleteCommand(key.into())))
     }
 
     pub fn increment(&self, key: impl Into<Key>, value: impl Into<Increment>) -> Result<Increment> {
@@ -98,8 +98,8 @@ mod tests {
     fn sets_value() {
         let mut db = test_db();
 
-        let ins = db.set(SetCommand("name".into(), "tom".into())).unwrap();
-        let replaced = db.set(SetCommand("name".into(), "bob".into())).unwrap();
+        let ins = db.set(SetCommand("name".into(), "tom".into()));
+        let replaced = db.set(SetCommand("name".into(), "bob".into()));
 
         assert!(replaced.is_some());
         assert_eq!(replaced.unwrap(), KVDBValue::String("tom".into()));
@@ -116,7 +116,7 @@ mod tests {
         let mut db = test_db();
         let _ = db.set(SetCommand("name".into(), "tom".into()));
 
-        let e = db.get(GetCommand("name".into())).unwrap();
+        let e = db.get(GetCommand("name".into()));
 
         assert!(e.is_some());
         assert_eq!(e.unwrap(), KVDBValue::String("tom".into()));
@@ -130,8 +130,8 @@ mod tests {
         let _ = db.set(SetCommand("name1".into(), "tom1".into()));
         let _ = db.set(SetCommand("name2".into(), "tom2".into()));
 
-        let deleted = db.delete(DeleteCommand("name1".into())).unwrap();
-        let empty = db.delete(DeleteCommand("name10".into())).unwrap();
+        let deleted = db.delete(DeleteCommand("name1".into()));
+        let empty = db.delete(DeleteCommand("name10".into()));
 
         assert_eq!(empty, None);
 
