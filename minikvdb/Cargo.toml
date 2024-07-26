@@ -1,13 +1,13 @@
 [package]
 name = "minikvdb"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-chrono = { version = "0.4.37", features = ["serde"], optional = true }
-serde = { version = "1.0.197", features = ["rc", "derive"] }
+chrono = { version = "0.4.38", features = ["serde"], optional = true }
+serde = { version = "1.0.204", features = ["rc", "derive"] }
 
 [features]
 default = ["key_value", "list", "map"]
@@ -15,3 +15,4 @@ key_value = []
 list = []
 map = []
 chrono = ["dep:chrono"]
+big-types = []

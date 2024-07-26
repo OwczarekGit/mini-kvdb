@@ -6,8 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-minikvdb = { path = "../minikvdb", features = ["chrono"]}
+minikvdb = { path = "../minikvdb", features = ["chrono", "big-types"]}
 minikvdb-macros = { path = "../minikvdb-macros" }
-clap = { version = "4.5.3", features = ["derive"] }
-serde_json = "1.0.115"
-chrono = { version = "0.4.37", features = ["serde"] }
+clap = { version = "4.5.11", features = ["derive"] }
+serde_json = "1.0.120"
+chrono = { version = "0.4.38", features = ["serde"] }

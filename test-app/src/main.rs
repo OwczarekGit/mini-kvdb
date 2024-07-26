@@ -15,6 +15,7 @@ fn main() {
             "John",
             3.141529,
             69,
+            420.0_f32,
             420.0,
             false,
             true,
@@ -50,6 +51,7 @@ fn main() {
             money: 123.4,
             premium: false,
             joined: Utc::now(),
+            score: 4.4,
         },
     );
 
@@ -77,6 +79,7 @@ pub struct Person {
     money: f32,
     premium: bool,
     joined: DateTime<Utc>,
+    score: f64,
 }
 
 #[derive(Debug, Default, Clone, KVDBEntity)]

@@ -1,9 +1,40 @@
+use serde::{Deserialize, Serialize};
 use std::fmt::Display;
 
-use crate::error::MiniKVDBError;
-use serde::{Deserialize, Serialize};
-
 use super::kvdb_key::Key;
+
+#[macro_export]
+macro_rules! kvdb_map {
+    ($v:ty, $typ:ident) => {
+        impl From<$v> for $crate::prelude::KVDBValue {
+            fn from(value: $v) -> Self {
+                Self::$typ(value.to_owned())
+            }
+        }
+
+        impl TryFrom<$crate::prelude::KVDBValue> for $v {
+            type Error = $crate::error::MiniKVDBError;
+            fn try_from(value: $crate::prelude::KVDBValue) -> Result<Self, Self::Error> {
+                if let $crate::prelude::KVDBValue::$typ(ref v) = value {
+                    Ok(v.to_owned())
+                } else {
+                    Err($crate::error::MiniKVDBError::WrongFieldType)
+                }
+            }
+        }
+
+        impl TryFrom<&$crate::prelude::KVDBValue> for $v {
+            type Error = $crate::error::MiniKVDBError;
+            fn try_from(value: &$crate::prelude::KVDBValue) -> Result<Self, Self::Error> {
+                if let $crate::prelude::KVDBValue::$typ(ref v) = value {
+                    Ok(v.to_owned())
+                } else {
+                    Err($crate::error::MiniKVDBError::WrongFieldType)
+                }
+            }
+        }
+    };
+}
 
 pub type KVDBObject = std::collections::HashMap<Key, KVDBValue>;
 
@@ -15,6 +46,10 @@ pub enum KVDBValue {
     String(String),
     #[cfg(feature = "chrono")]
     DateTimeUtc(::chrono::DateTime<::chrono::Utc>),
+    #[cfg(feature = "big-types")]
+    Long(i64),
+    #[cfg(feature = "big-types")]
+    Double(f64),
 }
 
 impl Display for KVDBValue {
@@ -26,33 +61,18 @@ impl Display for KVDBValue {
             KVDBValue::String(v) => write!(f, "{v}"),
             #[cfg(feature = "chrono")]
             KVDBValue::DateTimeUtc(v) => write!(f, "{v}"),
+            #[cfg(feature = "big-types")]
+            KVDBValue::Long(v) => write!(f, "{v}"),
+            #[cfg(feature = "big-types")]
+            KVDBValue::Double(v) => write!(f, "{v}"),
         }
     }
 }
 
-impl From<i32> for KVDBValue {
-    fn from(value: i32) -> Self {
-        Self::Int(value)
-    }
-}
-
-impl From<f32> for KVDBValue {
-    fn from(value: f32) -> Self {
-        Self::Float(value)
-    }
-}
-
-impl From<bool> for KVDBValue {
-    fn from(value: bool) -> Self {
-        Self::Bool(value)
-    }
-}
-
-impl From<String> for KVDBValue {
-    fn from(value: String) -> Self {
-        Self::String(value)
-    }
-}
+kvdb_map!(i32, Int);
+kvdb_map!(f32, Float);
+kvdb_map!(bool, Bool);
+kvdb_map!(String, String);
 
 impl From<&str> for KVDBValue {
     fn from(value: &str) -> Self {
@@ -60,138 +80,20 @@ impl From<&str> for KVDBValue {
     }
 }
 
-impl TryFrom<KVDBValue> for i32 {
-    type Error = MiniKVDBError;
-    fn try_from(value: KVDBValue) -> Result<Self, Self::Error> {
-        if let KVDBValue::Int(v) = value {
-            Ok(v)
-        } else {
-            Err(MiniKVDBError::WrongFieldType)
-        }
-    }
-}
-
-impl TryFrom<KVDBValue> for f32 {
-    type Error = MiniKVDBError;
-    fn try_from(value: KVDBValue) -> Result<Self, Self::Error> {
-        if let KVDBValue::Float(v) = value {
-            Ok(v)
-        } else {
-            Err(MiniKVDBError::WrongFieldType)
-        }
-    }
-}
-
-impl TryFrom<KVDBValue> for bool {
-    type Error = MiniKVDBError;
-    fn try_from(value: KVDBValue) -> Result<Self, Self::Error> {
-        if let KVDBValue::Bool(v) = value {
-            Ok(v)
-        } else {
-            Err(MiniKVDBError::WrongFieldType)
-        }
-    }
-}
-
-impl TryFrom<KVDBValue> for String {
-    type Error = MiniKVDBError;
-    fn try_from(value: KVDBValue) -> Result<Self, Self::Error> {
-        if let KVDBValue::String(v) = value {
-            Ok(v)
-        } else {
-            Err(MiniKVDBError::WrongFieldType)
-        }
-    }
-}
-
-impl TryFrom<&KVDBValue> for i32 {
-    type Error = MiniKVDBError;
-    fn try_from(value: &KVDBValue) -> Result<Self, Self::Error> {
-        if let KVDBValue::Int(v) = value {
-            Ok(*v)
-        } else {
-            Err(MiniKVDBError::WrongFieldType)
-        }
-    }
-}
-
-impl TryFrom<&KVDBValue> for f32 {
-    type Error = MiniKVDBError;
-    fn try_from(value: &KVDBValue) -> Result<Self, Self::Error> {
-        if let KVDBValue::Float(v) = value {
-            Ok(*v)
-        } else {
-            Err(MiniKVDBError::WrongFieldType)
-        }
-    }
-}
-
-impl TryFrom<&KVDBValue> for bool {
-    type Error = MiniKVDBError;
-    fn try_from(value: &KVDBValue) -> Result<Self, Self::Error> {
-        if let KVDBValue::Bool(v) = value {
-            Ok(*v)
-        } else {
-            Err(MiniKVDBError::WrongFieldType)
-        }
-    }
-}
-
-impl TryFrom<&KVDBValue> for String {
-    type Error = MiniKVDBError;
-    fn try_from(value: &KVDBValue) -> Result<Self, Self::Error> {
-        if let KVDBValue::String(v) = value {
-            Ok(v.clone())
-        } else {
-            Err(MiniKVDBError::WrongFieldType)
-        }
-    }
-}
-
 #[cfg(feature = "chrono")]
-mod chrono {
-    use chrono::{DateTime, Utc};
+kvdb_map!(chrono::DateTime<chrono::Utc>, DateTimeUtc);
 
-    use super::KVDBValue;
-    use crate::error::MiniKVDBError;
-
-    impl From<chrono::DateTime<chrono::Utc>> for KVDBValue {
-        fn from(value: chrono::DateTime<chrono::Utc>) -> Self {
-            Self::DateTimeUtc(value)
-        }
-    }
-    impl TryFrom<KVDBValue> for DateTime<Utc> {
-        type Error = MiniKVDBError;
-        fn try_from(value: KVDBValue) -> Result<Self, Self::Error> {
-            if let KVDBValue::DateTimeUtc(v) = value {
-                Ok(v)
-            } else {
-                Err(MiniKVDBError::WrongFieldType)
-            }
-        }
-    }
-
-    impl TryFrom<&KVDBValue> for DateTime<Utc> {
-        type Error = MiniKVDBError;
-        fn try_from(value: &KVDBValue) -> Result<Self, Self::Error> {
-            if let KVDBValue::DateTimeUtc(v) = value {
-                Ok(v.to_owned())
-            } else {
-                Err(MiniKVDBError::WrongFieldType)
-            }
-        }
-    }
+#[cfg(feature = "big-types")]
+mod big_types {
+    kvdb_map!(i64, Long);
+    kvdb_map!(f64, Double);
 }
 
 #[macro_export]
 macro_rules! values {
     ( $( $v:expr ),* ) => {
         {
-            let mut vec = vec![];
-            $(
-                vec.push($v.into());
-            )*
-            vec
+            vec![$($v.into(),)*]
         }
     };
 }
