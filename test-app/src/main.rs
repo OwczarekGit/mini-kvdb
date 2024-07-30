@@ -27,6 +27,9 @@ fn main() {
         ),
     );
 
+    dbg!(db.set("long1", 8i64));
+    dbg!(db.increment("long1", 1));
+
     dbg!(db.list_contains(format!("{}", "things"), true));
     dbg!(db.list_remove(("things", true)));
     dbg!(db.list_contains("things", true));

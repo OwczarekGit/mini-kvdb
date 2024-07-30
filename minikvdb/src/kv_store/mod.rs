@@ -39,6 +39,10 @@ impl KVStore {
                     *val += match v {
                         Increment::Int(v) => v,
                         Increment::Float(v) => v as i32,
+                        #[cfg(feature = "big-types")]
+                        Increment::Long(v) => v as i32,
+                        #[cfg(feature = "big-types")]
+                        Increment::Double(v) => v as i32,
                     };
 
                     Ok(Increment::Int(*val))
@@ -47,9 +51,35 @@ impl KVStore {
                     *val += match v {
                         Increment::Int(v) => v as f32,
                         Increment::Float(v) => v,
+                        #[cfg(feature = "big-types")]
+                        Increment::Long(v) => v as f32,
+                        #[cfg(feature = "big-types")]
+                        Increment::Double(v) => v as f32,
                     };
 
                     Ok(Increment::Float(*val))
+                }
+                #[cfg(feature = "big-types")]
+                KVDBValue::Long(val) => {
+                    *val += match v {
+                        Increment::Int(v) => v as i64,
+                        Increment::Float(v) => v as i64,
+                        Increment::Long(v) => v,
+                        Increment::Double(v) => v as i64,
+                    };
+
+                    Ok(Increment::Long(*val))
+                }
+                #[cfg(feature = "big-types")]
+                KVDBValue::Double(val) => {
+                    *val += match v {
+                        Increment::Int(v) => v as f64,
+                        Increment::Float(v) => v as f64,
+                        Increment::Long(v) => v as f64,
+                        Increment::Double(v) => v,
+                    };
+
+                    Ok(Increment::Double(*val))
                 }
                 _ => Err(MiniKVDBError::CannotIncrement),
             }
