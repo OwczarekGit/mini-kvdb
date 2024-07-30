@@ -6,8 +6,8 @@ use super::kvdb_key::Key;
 pub struct NamespacedKey(Vec<String>);
 
 impl NamespacedKey {
-    pub fn new(init: impl Into<String>) -> Self {
-        Self(vec![init.into()])
+    pub fn new(init: impl Display) -> Self {
+        Self(vec![init.to_string()])
     }
 
     pub fn ns(mut self, value: impl Display) -> Self {
