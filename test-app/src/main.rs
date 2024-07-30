@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use minikvdb::{minikvdb::kvdb_key::Key, prelude::*};
+use minikvdb::{minikvdb::namespaced_key::NamespacedKey, prelude::*};
 use minikvdb_macros::KVDBEntity;
 
 fn main() {
@@ -61,7 +61,7 @@ fn main() {
     dbg!(db.hash_get_object::<Person>("user:2"));
 
     let _ = db.hash_set(
-        Key::namespaced("cred", 3.141529),
+        NamespacedKey::new("cred").ns(3.141529).compose(),
         Credentials {
             email: "user@addr.com".to_owned(),
             password: "passw0rd".to_owned(),

@@ -5,12 +5,6 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct Key(pub String);
 
-impl Key {
-    pub fn namespaced(ns: impl Into<Key>, key: impl Into<Key>) -> Self {
-        Self(format!("{}:{}", ns.into().0, key.into().0))
-    }
-}
-
 impl Borrow<str> for Key {
     fn borrow(&self) -> &str {
         &self.0
