@@ -1,6 +1,21 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+macro_rules! impl_increment {
+    ($val:ident, $cmd_val:ident, $in:ident, $cast:ty) => {{
+        *$val += match $cmd_val {
+            Increment::Int(v) => v as $cast,
+            Increment::Float(v) => v as $cast,
+            #[cfg(feature = "big-types")]
+            Increment::Long(v) => v as $cast,
+            #[cfg(feature = "big-types")]
+            Increment::Double(v) => v as $cast,
+        };
+
+        Ok(Increment::$in(*$val))
+    }};
+}
+
 use crate::{
     error::{MiniKVDBError, Result},
     minikvdb::{kvdb_key::Key, kvdb_value::KVDBValue, KVDBStore, MiniKVDB},
@@ -35,52 +50,12 @@ impl KVStore {
         let IncrementCommand(k, v) = cmd.into();
         if let Some(value) = self.0.get_mut(&k) {
             match value {
-                KVDBValue::Int(val) => {
-                    *val += match v {
-                        Increment::Int(v) => v,
-                        Increment::Float(v) => v as i32,
-                        #[cfg(feature = "big-types")]
-                        Increment::Long(v) => v as i32,
-                        #[cfg(feature = "big-types")]
-                        Increment::Double(v) => v as i32,
-                    };
-
-                    Ok(Increment::Int(*val))
-                }
-                KVDBValue::Float(val) => {
-                    *val += match v {
-                        Increment::Int(v) => v as f32,
-                        Increment::Float(v) => v,
-                        #[cfg(feature = "big-types")]
-                        Increment::Long(v) => v as f32,
-                        #[cfg(feature = "big-types")]
-                        Increment::Double(v) => v as f32,
-                    };
-
-                    Ok(Increment::Float(*val))
-                }
+                KVDBValue::Int(val) => impl_increment!(val, v, Int, i32),
+                KVDBValue::Float(val) => impl_increment!(val, v, Float, f32),
                 #[cfg(feature = "big-types")]
-                KVDBValue::Long(val) => {
-                    *val += match v {
-                        Increment::Int(v) => v as i64,
-                        Increment::Float(v) => v as i64,
-                        Increment::Long(v) => v,
-                        Increment::Double(v) => v as i64,
-                    };
-
-                    Ok(Increment::Long(*val))
-                }
+                KVDBValue::Long(val) => impl_increment!(val, v, Long, i64),
                 #[cfg(feature = "big-types")]
-                KVDBValue::Double(val) => {
-                    *val += match v {
-                        Increment::Int(v) => v as f64,
-                        Increment::Float(v) => v as f64,
-                        Increment::Long(v) => v as f64,
-                        Increment::Double(v) => v,
-                    };
-
-                    Ok(Increment::Double(*val))
-                }
+                KVDBValue::Double(val) => impl_increment!(val, v, Double, f64),
                 _ => Err(MiniKVDBError::CannotIncrement),
             }
         } else {
@@ -177,7 +152,7 @@ mod tests {
             .unwrap();
 
         let inc_float = db
-            .increment(IncrementCommand("b".into(), 8.5.into()))
+            .increment(IncrementCommand("b".into(), 8.5f32.into()))
             .unwrap();
 
         assert_eq!(inc_int, Increment::Int(5));
@@ -188,7 +163,7 @@ mod tests {
     fn increments_values_with_correct_types() {
         let mut db = test_db();
         let _ = db.set(SetCommand("a".into(), 1.into()));
-        let _ = db.set(SetCommand("b".into(), 10.0.into()));
+        let _ = db.set(SetCommand("b".into(), 10.0f32.into()));
         let _ = db.set(SetCommand("c".into(), "john".into()));
 
         let inc_int_with_int = db
